@@ -1,0 +1,32 @@
+From 574dbb002ead1ddee4797556c69714eeaa0a3128 Mon Sep 17 00:00:00 2001
+From: shuaizhou
+Date: Thu, 29 Oct 2026 03:56:17 +0800
+Subject: [PATCH 09/14] Recorder: save actual object inertia, COM and mass
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ record_replay.py | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/record_replay.py b/record_replay.py
+index c802151..13ebe50 100644
+--- a/record_replay.py
++++ b/record_replay.py
+@@ -44,6 +44,14 @@ def run(agent):
+         env.p_gain *= pscale
+         print('REPLAY_FROM', replay, 'pgain_scale', pscale, 'p_gain_mean', float(env.p_gain.mean()), flush=True)
+         src_target = torch.from_numpy(src['target']).to(agent.device)
++    # Actual object rigid-body properties after scale/mass randomization (inertia in the body frame).
++    props = [env.gym.get_actor_rigid_body_properties(e, env.gym.find_actor_handle(e, 'object'))[0] for e in env.envs]
++    out['obj_inertia'] = torch.tensor([[[p.inertia.x.x, p.inertia.x.y, p.inertia.x.z], [p.inertia.y.x, p.inertia.y.y, p.inertia.y.z],
++                                        [p.inertia.z.x, p.inertia.z.y, p.inertia.z.z]] for p in props])
++    out['obj_com'] = torch.tensor([[p.com.x, p.com.y, p.com.z] for p in props])
++    out['obj_mass_prop'] = torch.tensor([p.mass for p in props])
++    print('OBJ_PROPS', json.dumps({'inertia_diag_env0': [float(out['obj_inertia'][0, i, i]) for i in range(3)],
++                                   'mass_env0': float(out['obj_mass_prop'][0]), 'scale_env0': float(out['obj_scale'][0])}), flush=True)
+     rec = {k: [] for k in ('target', 'q', 'obj_pose', 'contact_norm', 'done', 'rot_rad')}
+     alive = torch.ones(n, dtype=torch.bool, device=agent.device)
+     lengths = torch.full((n,), T, dtype=torch.long, device=agent.device)
+-- 
+2.43.0
+

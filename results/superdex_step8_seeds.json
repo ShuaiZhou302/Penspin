@@ -1,0 +1,32 @@
+{
+  "note": "Training seeds 0,1,2 for the tactile students (step 8). SDX with penlen=ig, eval seeds 42-44 x 64 episodes. Per training seed: mean over 3 eval seeds. 'mean'/'sd' are over the 3 training seeds (sample sd, ddof=1). Proprio has 1 training seed (IG 14.2; SDX 10.6/11.7/13.2 at mu 0.5/1.0/1.5). f model is f_v4 s0 for all f students. B+tactile seeds 1,2 = 772991/772994 (IG evals 772992/772995); seed-0 IG of B+tactile and rand taken from earlier evals 777024 and 778932.",
+  "jobs": {"train_eval": "789400-789412 COMPLETED", "step8_auto": "DONE 2026-11-02 05:33 CST, 72/72 JSON, .err empty"},
+  "per_seed_columns": ["rot_reward", "duration_s"],
+  "ig": {
+    "btactile": {"per_seed": [[44.0, 5.22], [44.42, 5.63], [40.31, 5.34]], "mean": 42.91, "sd": 2.26, "duration_s": 5.40},
+    "trand": {"per_seed": [[25.7, 3.67], [25.45, 3.66], [27.17, 3.86]], "mean": 26.11, "sd": 0.93, "duration_s": 3.73},
+    "cv4": {"per_seed": [[31.23, 4.13], [36.36, 4.84], [38.49, 5.0]], "mean": 35.36, "sd": 3.73, "duration_s": 4.66},
+    "fv4": {"per_seed": [[25.43, 3.66], [26.19, 3.71], [25.34, 3.59]], "mean": 25.65, "sd": 0.47, "duration_s": 3.65}
+  },
+  "sdx": {
+    "mu0.5": {
+      "btactile": {"per_seed": [[14.47, 2.13], [13.25, 1.83], [10.12, 1.56]], "mean": 12.61, "sd": 2.24, "duration_s": 1.84},
+      "trand": {"per_seed": [[12.79, 1.98], [13.34, 2.15], [13.03, 2.05]], "mean": 13.05, "sd": 0.28, "duration_s": 2.06},
+      "cv4": {"per_seed": [[14.09, 2.0], [14.07, 2.04], [13.12, 2.03]], "mean": 13.76, "sd": 0.55, "duration_s": 2.02},
+      "fv4": {"per_seed": [[13.28, 2.09], [12.01, 1.85], [14.1, 2.09]], "mean": 13.13, "sd": 1.05, "duration_s": 2.01}
+    },
+    "mu1.0": {
+      "btactile": {"per_seed": [[17.76, 2.74], [15.65, 2.47], [13.7, 2.16]], "mean": 15.70, "sd": 2.03, "duration_s": 2.46, "ge_pi_of_576": 22, "ge_2pi_of_576": 0},
+      "trand": {"per_seed": [[17.86, 2.76], [14.88, 2.54], [16.95, 2.58]], "mean": 16.56, "sd": 1.53, "duration_s": 2.63, "ge_pi_of_576": 23, "ge_2pi_of_576": 0},
+      "cv4": {"per_seed": [[16.77, 2.41], [16.41, 2.65], [18.02, 2.64]], "mean": 17.07, "sd": 0.85, "duration_s": 2.57, "ge_pi_of_576": 18, "ge_2pi_of_576": 0},
+      "fv4": {"per_seed": [[15.11, 2.46], [14.9, 2.54], [17.79, 2.61]], "mean": 15.93, "sd": 1.61, "duration_s": 2.54, "ge_pi_of_576": 24, "ge_2pi_of_576": 0}
+    },
+    "mu1.5": {
+      "btactile": {"per_seed": [[17.41, 2.75], [15.47, 2.45], [14.26, 2.34]], "mean": 15.71, "sd": 1.59, "duration_s": 2.51},
+      "trand": {"per_seed": [[17.24, 2.84], [15.49, 2.61], [17.03, 2.7]], "mean": 16.59, "sd": 0.95, "duration_s": 2.72},
+      "cv4": {"per_seed": [[17.25, 2.57], [18.41, 3.03], [19.09, 2.82]], "mean": 18.25, "sd": 0.93, "duration_s": 2.81},
+      "fv4": {"per_seed": [[15.86, 2.75], [14.69, 2.61], [17.71, 2.72]], "mean": 16.09, "sd": 1.52, "duration_s": 2.69}
+    }
+  },
+  "conclusion": "At mu=1.0 the four tactile students are within 1.4 reward (15.7-17.1); spreads overlap and the training-seed sd (0.85-2.03) is as large as the gaps. The seed-0 ordering (f lowest) does not hold: f seed 2 is the best single f/B+tactile/rand run at mu=1. Calib is nominally highest at mu=1.0/1.5 but not separable with 3 seeds. All four are above the single-seed proprio student at every mu. No student reaches 2pi in any of 576 episodes per policy."
+}

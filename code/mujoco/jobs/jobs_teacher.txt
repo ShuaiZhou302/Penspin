@@ -1,0 +1,12 @@
+./run_default.sh runs/teacher_M_n1_s42 isaac/runs/record_evalT_seed42_777022.npz 42 1
+./run_default.sh runs/teacher_M_n1_s43 isaac/runs/record_evalT_seed43_777022.npz 43 1
+./run_default.sh runs/teacher_M_n1_s44 isaac/runs/record_evalT_seed44_777022.npz 44 1
+./run_default.sh runs/teacher_M_n2_s42 isaac/runs/record_evalT_seed42_777022.npz 42 2
+./run_default.sh runs/teacher_M_n2_s43 isaac/runs/record_evalT_seed43_777022.npz 43 2
+./run_default.sh runs/teacher_M_n2_s44 isaac/runs/record_evalT_seed44_777022.npz 44 2
+./run_default.sh runs/teacher_M_n4_s42 isaac/runs/record_evalT_seed42_777022.npz 42 4
+./run_default.sh runs/teacher_M_n4_s43 isaac/runs/record_evalT_seed43_777022.npz 43 4
+./run_default.sh runs/teacher_M_n4_s44 isaac/runs/record_evalT_seed44_777022.npz 44 4
+./run_default.sh runs/teacher_M_n8_s42 isaac/runs/record_evalT_seed42_777022.npz 42 8
+./run_default.sh runs/teacher_M_n8_s43 isaac/runs/record_evalT_seed43_777022.npz 43 8
+./run_default.sh runs/teacher_M_n8_s44 isaac/runs/record_evalT_seed44_777022.npz 44 8

@@ -1,0 +1,158 @@
+{
+  "labels_per_arm": 9830400,
+  "arms": {
+    "strict_proprio_713476_iter400": {
+      "rows": [
+        {
+          "seed": 42,
+          "file": "<PROJECT_ROOT>/penspin-student-objpose-dagger-20261022/runs/objpose_proprio_pilot713476iter400_seed42_754034.json",
+          "sha256": "2a55d55c5b9122719f8e0c07ce5eadc637426f9ae7780b796374608355e43b75",
+          "rotation": 13.036224365234375,
+          "duration_s": 2.3445310592651367,
+          "timeout": 0,
+          "custom_strict": 0,
+          "ever180": 2,
+          "center_term": 58,
+          "endpoint_term": 32
+        },
+        {
+          "seed": 43,
+          "file": "<PROJECT_ROOT>/penspin-student-objpose-dagger-20261022/runs/objpose_proprio_pilot713476iter400_seed43_754034.json",
+          "sha256": "2a947d4b3913fcc2894b64426cf605a4ce95692139e7bb1be57348cfd81a81c7",
+          "rotation": 15.611841201782227,
+          "duration_s": 2.807812213897705,
+          "timeout": 0,
+          "custom_strict": 0,
+          "ever180": 2,
+          "center_term": 54,
+          "endpoint_term": 29
+        },
+        {
+          "seed": 44,
+          "file": "<PROJECT_ROOT>/penspin-student-objpose-dagger-20261022/runs/objpose_proprio_pilot713476iter400_seed44_754034.json",
+          "sha256": "5801f2a8ed14dc2904367305bf81a43a49bbb5e443f5b1baae0d03365e936d71",
+          "rotation": 12.25200366973877,
+          "duration_s": 2.2437500953674316,
+          "timeout": 0,
+          "custom_strict": 0,
+          "ever180": 3,
+          "center_term": 59,
+          "endpoint_term": 31
+        }
+      ],
+      "rotation_mean": 13.633356412251791,
+      "rotation_eval_sample_std": 1.7577121697289844,
+      "duration_s_mean": 2.465364456176758,
+      "duration_s_eval_sample_std": 0.3008189667343402,
+      "custom_strict": 0,
+      "timeout": 0,
+      "ever180": 7,
+      "center_term": 171,
+      "endpoint_term": 92
+    },
+    "A_proprio_ends_gt_754045": {
+      "rows": [
+        {
+          "seed": 42,
+          "file": "<PROJECT_ROOT>/penspin-student-objpose-dagger-20261022/runs/objpose_proprio_ends_gt_pilot754045_seed42_755336.json",
+          "sha256": "fafc7f82a935afa042ab94b52949783cbbaf3f7463690d144055a47e02365245",
+          "rotation": 31.186403274536133,
+          "duration_s": 4.202343463897705,
+          "timeout": 0,
+          "custom_strict": 0,
+          "ever180": 20,
+          "center_term": 55,
+          "endpoint_term": 35
+        },
+        {
+          "seed": 43,
+          "file": "<PROJECT_ROOT>/penspin-student-objpose-dagger-20261022/runs/objpose_proprio_ends_gt_pilot754045_seed43_755336.json",
+          "sha256": "4f73be96fe27a394c584bc37a85d1388824dd2f6d803c309b35b5a5dffacf832",
+          "rotation": 35.9544677734375,
+          "duration_s": 4.90468692779541,
+          "timeout": 1,
+          "custom_strict": 0,
+          "ever180": 23,
+          "center_term": 53,
+          "endpoint_term": 31
+        },
+        {
+          "seed": 44,
+          "file": "<PROJECT_ROOT>/penspin-student-objpose-dagger-20261022/runs/objpose_proprio_ends_gt_pilot754045_seed44_755336.json",
+          "sha256": "20431954f9e4f838e3fd51fa295bc5d9795f86761bd20be7bfc3bac66760c9f3",
+          "rotation": 34.60395431518555,
+          "duration_s": 4.583593845367432,
+          "timeout": 0,
+          "custom_strict": 0,
+          "ever180": 26,
+          "center_term": 54,
+          "endpoint_term": 35
+        }
+      ],
+      "rotation_mean": 33.91494178771973,
+      "rotation_eval_sample_std": 2.457572677190751,
+      "duration_s_mean": 4.563541412353516,
+      "duration_s_eval_sample_std": 0.35160085377070677,
+      "custom_strict": 0,
+      "timeout": 1,
+      "ever180": 69,
+      "center_term": 162,
+      "endpoint_term": 101
+    },
+    "B_proprio_ends_est_754033": {
+      "rows": [
+        {
+          "seed": 42,
+          "file": "<PROJECT_ROOT>/penspin-student-objpose-dagger-20261022/runs/objpose_proprio_ends_est_pilot754033_seed42_755325.json",
+          "sha256": "f4e5fa12ee6e2af228224921941db586aaf2e70a396591901b5f3ac729f50873",
+          "rotation": 12.472166061401367,
+          "duration_s": 2.2578125,
+          "timeout": 0,
+          "custom_strict": 0,
+          "ever180": 2,
+          "center_term": 51,
+          "endpoint_term": 31
+        },
+        {
+          "seed": 43,
+          "file": "<PROJECT_ROOT>/penspin-student-objpose-dagger-20261022/runs/objpose_proprio_ends_est_pilot754033_seed43_755325.json",
+          "sha256": "04044ec9562ce235e6ad3fefe17421596596246d3790908d7081a84dad140213",
+          "rotation": 16.36139678955078,
+          "duration_s": 2.768749952316284,
+          "timeout": 0,
+          "custom_strict": 0,
+          "ever180": 0,
+          "center_term": 59,
+          "endpoint_term": 20
+        },
+        {
+          "seed": 44,
+          "file": "<PROJECT_ROOT>/penspin-student-objpose-dagger-20261022/runs/objpose_proprio_ends_est_pilot754033_seed44_755325.json",
+          "sha256": "615b32274a76a9f388d3337645d0102bb76704170bf84d95b2f8bcb263a197ea",
+          "rotation": 14.740796089172363,
+          "duration_s": 2.530468702316284,
+          "timeout": 0,
+          "custom_strict": 0,
+          "ever180": 3,
+          "center_term": 49,
+          "endpoint_term": 28
+        }
+      ],
+      "rotation_mean": 14.524786313374838,
+      "rotation_eval_sample_std": 1.9535926089196485,
+      "duration_s_mean": 2.519010384877523,
+      "duration_s_eval_sample_std": 0.255661377262502,
+      "custom_strict": 0,
+      "timeout": 0,
+      "ever180": 5,
+      "center_term": 159,
+      "endpoint_term": 79
+    }
+  },
+  "limitations": [
+    "Pilot budget 400 rounds (9,830,400 labels), not the 59,006,976 full budget.",
+    "One training seed per arm; +/- is sample std over 3 evaluation seeds.",
+    "A uses simulator pen endpoints (with official noise): not a proprio-only deployable student.",
+    "Custom full20+heading>=pi is not paper SR."
+  ]
+}

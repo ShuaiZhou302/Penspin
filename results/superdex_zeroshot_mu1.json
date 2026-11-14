@@ -1,0 +1,211 @@
+{
+ "target": "SuperDex mu=1.0, physical pen inertia, default contact params",
+ "conditions": "obs noise t0.01 e0.02, no external force, no action noise, no PD/COM randomization, friction 1.0 in both sims",
+ "note": "IG numbers are the same policies from the same initial states in Isaac Gym (records 777022/777023/777024); +- over 3 eval seeds x 64",
+ "arms": {
+  "teacher": {
+   "42": {
+    "record": "isaac/runs/record_evalT_seed42_777022.npz",
+    "episodes": 64,
+    "options": {
+     "inertia": "mesh",
+     "friction": "1.0",
+     "noise_t": "0.01",
+     "noise_e": "0.02",
+     "seed": "42"
+    },
+    "wall_s": 219.3,
+    "sdx_rot_reward_mean": 38.810399003035634,
+    "ig_rot_reward_mean": 141.00954228267074,
+    "sdx_duration_s_mean": 4.7703125,
+    "ig_duration_s_mean": 14.840625000000001,
+    "sdx_full_episodes": 6,
+    "ig_full_episodes": 1,
+    "sdx_rot_rad_mean": 2.7678290738502143,
+    "ig_rot_rad_mean": 9.745640029781498
+   },
+   "43": {
+    "record": "isaac/runs/record_evalT_seed43_777022.npz",
+    "episodes": 64,
+    "options": {
+     "inertia": "mesh",
+     "friction": "1.0",
+     "noise_t": "0.01",
+     "noise_e": "0.02",
+     "seed": "43"
+    },
+    "wall_s": 235.8,
+    "sdx_rot_reward_mean": 37.81441035979377,
+    "ig_rot_reward_mean": 126.98922905232757,
+    "sdx_duration_s_mean": 5.0804687500000005,
+    "ig_duration_s_mean": 13.457812500000001,
+    "sdx_full_episodes": 2,
+    "ig_full_episodes": 2,
+    "sdx_rot_rad_mean": 2.7879819624055884,
+    "ig_rot_rad_mean": 8.86471143970266
+   },
+   "44": {
+    "record": "isaac/runs/record_evalT_seed44_777022.npz",
+    "episodes": 64,
+    "options": {
+     "inertia": "mesh",
+     "friction": "1.0",
+     "noise_t": "0.01",
+     "noise_e": "0.02",
+     "seed": "44"
+    },
+    "wall_s": 217.3,
+    "sdx_rot_reward_mean": 28.657361849362985,
+    "ig_rot_reward_mean": 140.8736722022295,
+    "sdx_duration_s_mean": 4.13671875,
+    "ig_duration_s_mean": 14.71015625,
+    "sdx_full_episodes": 1,
+    "ig_full_episodes": 0,
+    "sdx_rot_rad_mean": 2.1045124680556455,
+    "ig_rot_rad_mean": 9.832339826883981
+   }
+  },
+  "proprio": {
+   "42": {
+    "record": "isaac/runs/record_evalP_seed42_777023.npz",
+    "episodes": 64,
+    "options": {
+     "inertia": "mesh",
+     "friction": "1.0",
+     "noise_t": "0.01",
+     "noise_e": "0.02",
+     "seed": "42",
+     "policy": "student",
+     "mode": "proprio",
+     "ckpt": "<PROJECT_ROOT>/penspin-16831-dagger-scratch-20261012/outputs/AllegroHandHora/scratch_dagger_713476/stage1_nn/iter_400_newsteps_9830400.pth"
+    },
+    "wall_s": 182.8,
+    "sdx_rot_reward_mean": 12.09226758994408,
+    "ig_rot_reward_mean": 15.872974765487015,
+    "sdx_duration_s_mean": 2.07265625,
+    "ig_duration_s_mean": 2.38125,
+    "sdx_full_episodes": 0,
+    "ig_full_episodes": 0,
+    "sdx_rot_rad_mean": 0.7438597095654195,
+    "ig_rot_rad_mean": 1.13637440445018
+   },
+   "43": {
+    "record": "isaac/runs/record_evalP_seed43_777023.npz",
+    "episodes": 64,
+    "options": {
+     "inertia": "mesh",
+     "friction": "1.0",
+     "noise_t": "0.01",
+     "noise_e": "0.02",
+     "seed": "43",
+     "policy": "student",
+     "mode": "proprio",
+     "ckpt": "<PROJECT_ROOT>/penspin-16831-dagger-scratch-20261012/outputs/AllegroHandHora/scratch_dagger_713476/stage1_nn/iter_400_newsteps_9830400.pth"
+    },
+    "wall_s": 188.0,
+    "sdx_rot_reward_mean": 12.673708648921188,
+    "ig_rot_reward_mean": 12.87308815214783,
+    "sdx_duration_s_mean": 2.2648437500000003,
+    "ig_duration_s_mean": 2.04453125,
+    "sdx_full_episodes": 0,
+    "ig_full_episodes": 0,
+    "sdx_rot_rad_mean": 0.7501155793964324,
+    "ig_rot_rad_mean": 0.9151596002047881
+   },
+   "44": {
+    "record": "isaac/runs/record_evalP_seed44_777023.npz",
+    "episodes": 64,
+    "options": {
+     "inertia": "mesh",
+     "friction": "1.0",
+     "noise_t": "0.01",
+     "noise_e": "0.02",
+     "seed": "44",
+     "policy": "student",
+     "mode": "proprio",
+     "ckpt": "<PROJECT_ROOT>/penspin-16831-dagger-scratch-20261012/outputs/AllegroHandHora/scratch_dagger_713476/stage1_nn/iter_400_newsteps_9830400.pth"
+    },
+    "wall_s": 184.9,
+    "sdx_rot_reward_mean": 13.658727191705584,
+    "ig_rot_reward_mean": 13.71061337320134,
+    "sdx_duration_s_mean": 2.22734375,
+    "ig_duration_s_mean": 2.303125,
+    "sdx_full_episodes": 0,
+    "ig_full_episodes": 0,
+    "sdx_rot_rad_mean": 0.835764331361599,
+    "ig_rot_rad_mean": 0.9501725364825688
+   }
+  },
+  "btactile": {
+   "42": {
+    "record": "isaac/runs/record_evalBT_seed42_777024.npz",
+    "episodes": 64,
+    "options": {
+     "inertia": "mesh",
+     "friction": "1.0",
+     "noise_t": "0.01",
+     "noise_e": "0.02",
+     "seed": "42",
+     "policy": "student",
+     "mode": "proprio_tactile_ends_est",
+     "ckpt": "<PROJECT_ROOT>/penspin-student-objpose-dagger-20261022/outputs/AllegroHandHora/objpose_proprio_tactile_ends_est_758850/stage1_nn/final.pth"
+    },
+    "wall_s": 179.5,
+    "sdx_rot_reward_mean": 7.130000627836412,
+    "ig_rot_reward_mean": 40.533248191233724,
+    "sdx_duration_s_mean": 1.50703125,
+    "ig_duration_s_mean": 4.8765625,
+    "sdx_full_episodes": 0,
+    "ig_full_episodes": 0,
+    "sdx_rot_rad_mean": 0.4634423933189857,
+    "ig_rot_rad_mean": 2.9668192844837904
+   },
+   "43": {
+    "record": "isaac/runs/record_evalBT_seed43_777024.npz",
+    "episodes": 64,
+    "options": {
+     "inertia": "mesh",
+     "friction": "1.0",
+     "noise_t": "0.01",
+     "noise_e": "0.02",
+     "seed": "43",
+     "policy": "student",
+     "mode": "proprio_tactile_ends_est",
+     "ckpt": "<PROJECT_ROOT>/penspin-student-objpose-dagger-20261022/outputs/AllegroHandHora/objpose_proprio_tactile_ends_est_758850/stage1_nn/final.pth"
+    },
+    "wall_s": 178.4,
+    "sdx_rot_reward_mean": 6.582208377930675,
+    "ig_rot_reward_mean": 49.104078670963645,
+    "sdx_duration_s_mean": 1.56953125,
+    "ig_duration_s_mean": 5.759375,
+    "sdx_full_episodes": 0,
+    "ig_full_episodes": 0,
+    "sdx_rot_rad_mean": 0.4666208234234349,
+    "ig_rot_rad_mean": 3.567275045439601
+   },
+   "44": {
+    "record": "isaac/runs/record_evalBT_seed44_777024.npz",
+    "episodes": 64,
+    "options": {
+     "inertia": "mesh",
+     "friction": "1.0",
+     "noise_t": "0.01",
+     "noise_e": "0.02",
+     "seed": "44",
+     "policy": "student",
+     "mode": "proprio_tactile_ends_est",
+     "ckpt": "<PROJECT_ROOT>/penspin-student-objpose-dagger-20261022/outputs/AllegroHandHora/objpose_proprio_tactile_ends_est_758850/stage1_nn/final.pth"
+    },
+    "wall_s": 173.5,
+    "sdx_rot_reward_mean": 5.991910333133936,
+    "ig_rot_reward_mean": 42.29265655670315,
+    "sdx_duration_s_mean": 1.4273437500000001,
+    "ig_duration_s_mean": 5.010937500000001,
+    "sdx_full_episodes": 0,
+    "ig_full_episodes": 0,
+    "sdx_rot_rad_mean": 0.39785555464491196,
+    "ig_rot_rad_mean": 3.0968495278793853
+   }
+  }
+ }
+}

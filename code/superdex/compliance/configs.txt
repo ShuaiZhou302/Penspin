@@ -1,0 +1,6 @@
+C0 none
+C1 penalty_coefficient=1e8
+C2 penalty_coefficient=1e10
+C3 penalty_smoothing_half_distance=0.001
+C4 friction_falloff_vel=0.001
+C5 penalty_smoothing_half_distance=0.001,friction_falloff_vel=0.001

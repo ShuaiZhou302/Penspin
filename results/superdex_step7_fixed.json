@@ -1,0 +1,30 @@
+{
+  "note": "Replaces every earlier SDX table. Rotation reward, 3 eval seeds (42,43,44), 1 training seed per policy; std is across eval seeds, not training seeds. SDX inertia=mesh, noise_t=0.01, noise_e=0.02, penlen=ig. Each policy started from the same initial states per seed.",
+  "jobs": {"fv4": {"train": 783805, "eval": 783807, "record": 783809}, "cv4": {"train": 783806, "eval": 783808, "record": 783810}},
+  "repo": "penspin-student-penlen-20261031 commit 1923a67",
+  "checkpoints_sha256_prefix": {"fv4": "51b3d5547388262f", "cv4": "8692f4359f7f0433"},
+  "final_loss_l1_sum": {"fv4": 2.335, "cv4": 2.125, "falign_old": 2.355, "trand": 2.273, "btactile": 1.966},
+  "ig_protocol": {
+    "columns": ["rot_mean", "rot_std", "duration_mean_s"],
+    "teacher": [136.3, null, null],
+    "proprio": [14.2, null, null],
+    "btactile": [44.0, 4.5, 5.22],
+    "trand": [25.7, 3.1, 3.67],
+    "cv4": [31.2, 3.8, 4.13],
+    "fv4": [25.4, 4.1, 3.66]
+  },
+  "sdx_zero_shot": {
+    "columns": ["rot_mean", "rot_std", "duration_mean_s"],
+    "teacher": {"0.5": [76.8, 0.8, 8.55], "1.0": [49.2, 3.7, 6.10], "1.5": [31.3, 3.7, 4.27]},
+    "proprio": {"0.5": [10.6, 1.6, 1.82], "1.0": [11.7, 0.9, 2.08], "1.5": [13.2, 1.1, 2.28]},
+    "btactile": {"0.5": [14.5, 1.5, 2.13], "1.0": [17.8, 2.1, 2.74], "1.5": [17.4, 1.0, 2.75]},
+    "trand": {"0.5": [12.8, 0.7, 1.98], "1.0": [17.9, 1.7, 2.76], "1.5": [17.2, 0.6, 2.84]},
+    "cv4": {"0.5": [14.1, 0.8, 2.00], "1.0": [16.8, 0.2, 2.41], "1.5": [17.3, 1.5, 2.57]},
+    "fv4": {"0.5": [13.3, 1.3, 2.09], "1.0": [15.1, 1.5, 2.46], "1.5": [15.9, 0.8, 2.75]}
+  },
+  "fv4_minus_other_by_eval_seed": {
+    "0.5": {"btactile": [-0.2, -1.1, -2.3], "trand": [0.2, 2.4, -1.1], "cv4": [-1.0, 1.0, -2.5], "proprio": [3.1, 2.4, 2.7]},
+    "1.0": {"btactile": [-3.3, -3.2, -1.5], "trand": [-1.7, -2.6, -4.0], "cv4": [-2.5, -0.2, -2.4], "proprio": [3.3, 5.4, 1.6]},
+    "1.5": {"btactile": [-1.9, -1.5, -1.3], "trand": [-1.4, -1.2, -1.6], "cv4": [-2.0, -1.7, -0.5], "proprio": [3.8, 3.4, 0.9]}
+  }
+}

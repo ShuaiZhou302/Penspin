@@ -1,0 +1,9 @@
+{"f": "f_v3/teacher_plus_student/f_b100_s0.pt (caedb3a9)", "train_job": 777476, "repo_commit": "97c4472",
+ "ckpt": "penspin-student-falign-20261029/outputs/AllegroHandHora/objpose_proprio_tactile_ends_est_777476/stage1_nn/final.pth (57725b5f)",
+ "ig_protocol_eval_777477": {"rot_reward": [25.12, 27.28, 22.42], "duration_s": [3.54, 3.92, 3.46]},
+ "sdx_mu1_zeroshot": {"rot_reward": [14.61, 16.57, 13.04], "duration_s": [2.50, 2.64, 2.19], "ig_record_rot_reward": [25.40, 24.57, 23.16]},
+ "reference_btactile_758850": {"ig_rot": 44.0, "sdx_rot": [17.58, 15.42, 16.25], "sdx_duration_s": [2.59, 2.43, 2.61]},
+ "reference_proprio": {"ig_rot": 14.2, "sdx_rot_mean": 12.8},
+ "final_imitation_l1_round400": {"falign_777476": 2.355, "btactile_758850": 1.966},
+ "privileged_ablation_drop_one_group": {"full": 122.1, "objpose": [122.0,145.5,116.4], "angvel": [119.8,140.3,104.7], "phys": [120.2,140.4,120.8], "ftpos": [119.3,143.6,109.3], "contact": [116.1,145.3,114.0], "pc": [112.1,142.1,111.2]},
+ "note": "eval-seed sd only (1 training seed); not paper SR"}

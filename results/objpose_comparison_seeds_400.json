@@ -1,0 +1,443 @@
+{
+  "labels_per_training_run": 9830400,
+  "groups": {
+    "A_gt_ends": {
+      "input_mode": "proprio_ends_gt",
+      "per_train_seed": [
+        {
+          "train_seed": 0,
+          "train_job": 754045,
+          "eval_job": 755336,
+          "config": "config_102402_135803b.yaml",
+          "final_loss": 2.015500096480052,
+          "final_pose_cm": null,
+          "final_train_episode_steps": 86.00701754385965,
+          "eval_rows": [
+            {
+              "eval_seed": 42,
+              "sha256": "fafc7f82a935afa042ab94b52949783cbbaf3f7463690d144055a47e02365245",
+              "rotation": 31.186403274536133,
+              "duration_s": 4.202343463897705,
+              "timeout": 0,
+              "custom": 0,
+              "ever180": 20
+            },
+            {
+              "eval_seed": 43,
+              "sha256": "4f73be96fe27a394c584bc37a85d1388824dd2f6d803c309b35b5a5dffacf832",
+              "rotation": 35.9544677734375,
+              "duration_s": 4.90468692779541,
+              "timeout": 1,
+              "custom": 0,
+              "ever180": 23
+            },
+            {
+              "eval_seed": 44,
+              "sha256": "20431954f9e4f838e3fd51fa295bc5d9795f86761bd20be7bfc3bac66760c9f3",
+              "rotation": 34.60395431518555,
+              "duration_s": 4.583593845367432,
+              "timeout": 0,
+              "custom": 0,
+              "ever180": 26
+            }
+          ],
+          "rotation": 33.91494178771973,
+          "duration_s": 4.563541412353516,
+          "ever180": 69,
+          "timeout": 1,
+          "custom": 0
+        },
+        {
+          "train_seed": 1,
+          "train_job": 772987,
+          "eval_job": 772988,
+          "config": "config_102803_61d301b.yaml",
+          "final_loss": 2.031352241834005,
+          "final_pose_cm": null,
+          "final_train_episode_steps": 76.64285714285714,
+          "eval_rows": [
+            {
+              "eval_seed": 42,
+              "sha256": "57cf07e5b3b0780039756f0b90128783a0b976384b474211e9acd0cff826d271",
+              "rotation": 27.408668518066406,
+              "duration_s": 3.801562547683716,
+              "timeout": 0,
+              "custom": 0,
+              "ever180": 19
+            },
+            {
+              "eval_seed": 43,
+              "sha256": "4fb07dcde18c49b7c80e348049349f8bfa85db1ce5cfe313ccec94add11ad74a",
+              "rotation": 46.30217361450195,
+              "duration_s": 6.0703125,
+              "timeout": 1,
+              "custom": 1,
+              "ever180": 34
+            },
+            {
+              "eval_seed": 44,
+              "sha256": "7fcd96b55ea76940fb0440ef59311c2e6dcc2ef782b42d299e82468a70250fe6",
+              "rotation": 37.49418640136719,
+              "duration_s": 4.9140625,
+              "timeout": 0,
+              "custom": 0,
+              "ever180": 25
+            }
+          ],
+          "rotation": 37.06834284464518,
+          "duration_s": 4.928645849227905,
+          "ever180": 78,
+          "timeout": 1,
+          "custom": 1
+        },
+        {
+          "train_seed": 2,
+          "train_job": 772989,
+          "eval_job": 772990,
+          "config": "config_102803_61d301b.yaml",
+          "final_loss": 2.016028380393982,
+          "final_pose_cm": null,
+          "final_train_episode_steps": 85.50352112676056,
+          "eval_rows": [
+            {
+              "eval_seed": 42,
+              "sha256": "5d07f3c969aad04e5dbbb34200496449e01ecf203031433c8a43bc3e0c933b7c",
+              "rotation": 29.60773468017578,
+              "duration_s": 4.0390625,
+              "timeout": 0,
+              "custom": 0,
+              "ever180": 15
+            },
+            {
+              "eval_seed": 43,
+              "sha256": "6c86ced03e74e406cb5dc6abc9748123dc3329080aac84491a6c4a894c0c652e",
+              "rotation": 40.96595001220703,
+              "duration_s": 5.393749713897705,
+              "timeout": 0,
+              "custom": 0,
+              "ever180": 26
+            },
+            {
+              "eval_seed": 44,
+              "sha256": "9936204eec1b03f518c72922e8a723afb016ca2635fc340db127c889ee9878d3",
+              "rotation": 34.15340042114258,
+              "duration_s": 4.543749809265137,
+              "timeout": 0,
+              "custom": 0,
+              "ever180": 23
+            }
+          ],
+          "rotation": 34.90902837117513,
+          "duration_s": 4.658854007720947,
+          "ever180": 64,
+          "timeout": 0,
+          "custom": 0
+        }
+      ],
+      "rotation_mean": 35.29743766784668,
+      "rotation_train_seed_std": 1.6121820284199628,
+      "duration_s_mean": 4.717013756434123,
+      "duration_s_train_seed_std": 0.18937325506556113,
+      "ever180_total": 211,
+      "custom_total": 1
+    },
+    "B_tactile_est": {
+      "input_mode": "proprio_tactile_ends_est",
+      "per_train_seed": [
+        {
+          "train_seed": 0,
+          "train_job": 758850,
+          "eval_job": 758851,
+          "config": "config_102420_f63f1d7.yaml",
+          "final_loss": 1.9656287948290507,
+          "final_pose_cm": 2.074093476931254,
+          "final_train_episode_steps": 102.01333333333334,
+          "eval_rows": [
+            {
+              "eval_seed": 42,
+              "sha256": "499636fbef1119c592e65e2e31b4ef6bf6eac1ad9329afc4a27ee1181b394950",
+              "rotation": 41.37497329711914,
+              "duration_s": 5.307031154632568,
+              "timeout": 3,
+              "custom": 3,
+              "ever180": 23
+            },
+            {
+              "eval_seed": 43,
+              "sha256": "61d80d667a805cd57a0dab57ee897502c408b6097b05a95e8c3f64a31ecd6172",
+              "rotation": 47.3427734375,
+              "duration_s": 5.908593654632568,
+              "timeout": 0,
+              "custom": 0,
+              "ever180": 32
+            },
+            {
+              "eval_seed": 44,
+              "sha256": "e547af0f0790a4bf4c14fdfb422bddf0c80a78e988fb48cb433a006ad8a35fad",
+              "rotation": 42.90510940551758,
+              "duration_s": 5.453906059265137,
+              "timeout": 1,
+              "custom": 1,
+              "ever180": 24
+            }
+          ],
+          "rotation": 43.87428538004557,
+          "duration_s": 5.556510289510091,
+          "ever180": 79,
+          "timeout": 4,
+          "custom": 4
+        },
+        {
+          "train_seed": 1,
+          "train_job": 772991,
+          "eval_job": 772992,
+          "config": "config_102803_61d301b.yaml",
+          "final_loss": 1.9772902806599935,
+          "final_pose_cm": 2.0772084395090737,
+          "final_train_episode_steps": 97.90118577075098,
+          "eval_rows": [
+            {
+              "eval_seed": 42,
+              "sha256": "8f73bac8ec8179e4706fd67f887753d2f8d5543a1003f00c6cad34f769060646",
+              "rotation": 40.48487854003906,
+              "duration_s": 5.240624904632568,
+              "timeout": 1,
+              "custom": 1,
+              "ever180": 27
+            },
+            {
+              "eval_seed": 43,
+              "sha256": "69d58b726bbbf9dbc1144f9d17ff47ad56adbc3348cdbba4eb648a45f39e51fd",
+              "rotation": 47.374244689941406,
+              "duration_s": 5.916406154632568,
+              "timeout": 0,
+              "custom": 0,
+              "ever180": 32
+            },
+            {
+              "eval_seed": 44,
+              "sha256": "d923d4806f0f8e4c49635f4fe93e2daa5404e1b8df02f6263bc6ae157eed4ce7",
+              "rotation": 45.386478424072266,
+              "duration_s": 5.744531154632568,
+              "timeout": 3,
+              "custom": 3,
+              "ever180": 26
+            }
+          ],
+          "rotation": 44.415200551350914,
+          "duration_s": 5.633854071299235,
+          "ever180": 85,
+          "timeout": 4,
+          "custom": 4
+        },
+        {
+          "train_seed": 2,
+          "train_job": 772994,
+          "eval_job": 772995,
+          "config": "config_102803_61d301b.yaml",
+          "final_loss": 1.988060963153839,
+          "final_pose_cm": 2.0774603923161825,
+          "final_train_episode_steps": 96.04166666666667,
+          "eval_rows": [
+            {
+              "eval_seed": 42,
+              "sha256": "8d55b7946b92c24606309cc1a42386dc880395475b12b8fcb8be97d0f3750406",
+              "rotation": 40.60523986816406,
+              "duration_s": 5.485156059265137,
+              "timeout": 0,
+              "custom": 0,
+              "ever180": 26
+            },
+            {
+              "eval_seed": 43,
+              "sha256": "a18c80c3c03104208f903dc62da7abf21b9b54abc5e27889d2b4f766af41993f",
+              "rotation": 47.839813232421875,
+              "duration_s": 6.255468845367432,
+              "timeout": 2,
+              "custom": 2,
+              "ever180": 33
+            },
+            {
+              "eval_seed": 44,
+              "sha256": "4ea2ee8b3a1887dc0ced06b9040ad44f03650d8155c1073c417eff8c08e459eb",
+              "rotation": 32.48167419433594,
+              "duration_s": 4.267968654632568,
+              "timeout": 0,
+              "custom": 0,
+              "ever180": 22
+            }
+          ],
+          "rotation": 40.30890909830729,
+          "duration_s": 5.336197853088379,
+          "ever180": 81,
+          "timeout": 2,
+          "custom": 2
+        }
+      ],
+      "rotation_mean": 42.866131676567925,
+      "rotation_train_seed_std": 2.2310732376395785,
+      "duration_s_mean": 5.508854071299235,
+      "duration_s_train_seed_std": 0.1544446257094036,
+      "ever180_total": 245,
+      "custom_total": 10
+    }
+  },
+  "single_seed_refs": {
+    "strict_proprio_iter400": {
+      "rows": [
+        {
+          "eval_seed": 42,
+          "sha256": "2a55d55c5b9122719f8e0c07ce5eadc637426f9ae7780b796374608355e43b75",
+          "rotation": 13.036224365234375,
+          "duration_s": 2.3445310592651367,
+          "timeout": 0,
+          "custom": 0,
+          "ever180": 2
+        },
+        {
+          "eval_seed": 43,
+          "sha256": "2a947d4b3913fcc2894b64426cf605a4ce95692139e7bb1be57348cfd81a81c7",
+          "rotation": 15.611841201782227,
+          "duration_s": 2.807812213897705,
+          "timeout": 0,
+          "custom": 0,
+          "ever180": 2
+        },
+        {
+          "eval_seed": 44,
+          "sha256": "5801f2a8ed14dc2904367305bf81a43a49bbb5e443f5b1baae0d03365e936d71",
+          "rotation": 12.25200366973877,
+          "duration_s": 2.2437500953674316,
+          "timeout": 0,
+          "custom": 0,
+          "ever180": 3
+        }
+      ],
+      "rotation": 13.633356412251791,
+      "duration_s": 2.465364456176758,
+      "ever180": 7,
+      "timeout": 0,
+      "custom": 0
+    },
+    "B_est": {
+      "rows": [
+        {
+          "eval_seed": 42,
+          "sha256": "f4e5fa12ee6e2af228224921941db586aaf2e70a396591901b5f3ac729f50873",
+          "rotation": 12.472166061401367,
+          "duration_s": 2.2578125,
+          "timeout": 0,
+          "custom": 0,
+          "ever180": 2
+        },
+        {
+          "eval_seed": 43,
+          "sha256": "04044ec9562ce235e6ad3fefe17421596596246d3790908d7081a84dad140213",
+          "rotation": 16.36139678955078,
+          "duration_s": 2.768749952316284,
+          "timeout": 0,
+          "custom": 0,
+          "ever180": 0
+        },
+        {
+          "eval_seed": 44,
+          "sha256": "615b32274a76a9f388d3337645d0102bb76704170bf84d95b2f8bcb263a197ea",
+          "rotation": 14.740796089172363,
+          "duration_s": 2.530468702316284,
+          "timeout": 0,
+          "custom": 0,
+          "ever180": 3
+        }
+      ],
+      "rotation": 14.524786313374838,
+      "duration_s": 2.519010384877523,
+      "ever180": 5,
+      "timeout": 0,
+      "custom": 0
+    },
+    "B_tactile_est_sg": {
+      "rows": [
+        {
+          "eval_seed": 42,
+          "sha256": "f341f4f75b3532f7e714e80b7d85eb7afac3e4256a5f2584fac25fee6d876eb9",
+          "rotation": 26.95307159423828,
+          "duration_s": 3.717968702316284,
+          "timeout": 0,
+          "custom": 0,
+          "ever180": 13
+        },
+        {
+          "eval_seed": 43,
+          "sha256": "8c522f7965436d9bfa5637fc91173cf7ec3696c8dd964dd231fb950f7b5d97e2",
+          "rotation": 27.219209671020508,
+          "duration_s": 3.909374952316284,
+          "timeout": 0,
+          "custom": 0,
+          "ever180": 15
+        },
+        {
+          "eval_seed": 44,
+          "sha256": "21a3316ca45db4efda04dc572464a15d0dc720d12ba5f7d6413852099b505e5c",
+          "rotation": 20.566200256347656,
+          "duration_s": 3.085155963897705,
+          "timeout": 0,
+          "custom": 0,
+          "ever180": 11
+        }
+      ],
+      "rotation": 24.912827173868816,
+      "duration_s": 3.570833206176758,
+      "ever180": 39,
+      "timeout": 0,
+      "custom": 0
+    },
+    "B_extra_capacity_est": {
+      "rows": [
+        {
+          "eval_seed": 42,
+          "sha256": "a057b5e650e22f3cc82a56c764887887994428ba4f6bd95c2ea0e4341f97433b",
+          "rotation": 12.189453125,
+          "duration_s": 2.2289061546325684,
+          "timeout": 0,
+          "custom": 0,
+          "ever180": 5
+        },
+        {
+          "eval_seed": 43,
+          "sha256": "d55e03c0b09aa1e9b4f3ffe179ffea9fd55bca2a10fec9cfd4156a859489331d",
+          "rotation": 17.856319427490234,
+          "duration_s": 2.9468750953674316,
+          "timeout": 0,
+          "custom": 0,
+          "ever180": 6
+        },
+        {
+          "eval_seed": 44,
+          "sha256": "ad26af6f9d8eb2c8cad5b4d873ee6c58b1385c63229c678cb902f3fb27fdaf46",
+          "rotation": 13.6417236328125,
+          "duration_s": 2.464062452316284,
+          "timeout": 0,
+          "custom": 0,
+          "ever180": 3
+        }
+      ],
+      "rotation": 14.562498728434244,
+      "duration_s": 2.5466145674387612,
+      "ever180": 14,
+      "timeout": 0,
+      "custom": 0
+    }
+  },
+  "ordering": {
+    "B_tactile_gt_A_every_seed": true,
+    "A_gt_baseline_every_seed": true,
+    "B_tactile_gt_baseline_every_seed": true
+  },
+  "notes": [
+    "train_seed std = sample std over 3 training seeds of the per-run mean over 3 eval seeds x 64 episodes.",
+    "Seed-0 runs used earlier frozen commits (b2d026c / f63f1d7); seeds 1-2 use 61d301b, whose only change for these modes is the TRAIN_SEED override (default 0 keeps reservoir seed 13001).",
+    "Baseline and control arms are single training seed.",
+    "A reads simulator endpoints: not proprio-only deployable.",
+    "Custom full20+heading>=pi is not paper SR."
+  ]
+}

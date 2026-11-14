@@ -1,0 +1,60 @@
+== penspin-student-falign-20261029
+97c4472 2026-10-29 Contact-alignment tactile channel (TACTILE_ALIGN_F) for the student; f v3 teacher+student b100 s0
+fa99bdc 2026-10-29 Add leave-one-group-out ablation of the privileged student
+e8a0db9 2026-10-28 Add proprio_priv_gt upper-bound diagnostic student
+61d301b 2026-10-28 Add TRAIN_SEED override for training-seed replication
+5133171 2026-10-26 Add stop-gradient and equal-capacity estimator controls
+f63f1d7 2026-10-24 Add proprio_tactile_ends_est estimator variant
+b2d026c 2026-10-24 Apply ENDS_NOISE_CM patch to trainer and eval
+2f187ee 2026-10-24 Add ENDS_NOISE_CM endpoint-noise sensitivity option
+135803b 2026-10-23 Student object-endpoint variants on strict pure-DAgger source
+
+== penspin-student-tacbase-20261029
+3de74e1 2026-10-29 Tactile-gap baselines for the student: contact randomization (TACTILE_RAND) and SuperDex threshold/delay calibration (TACTILE_CALIB)
+97c4472 2026-10-29 Contact-alignment tactile channel (TACTILE_ALIGN_F) for the student; f v3 teacher+student b100 s0
+fa99bdc 2026-10-29 Add leave-one-group-out ablation of the privileged student
+e8a0db9 2026-10-28 Add proprio_priv_gt upper-bound diagnostic student
+61d301b 2026-10-28 Add TRAIN_SEED override for training-seed replication
+5133171 2026-10-26 Add stop-gradient and equal-capacity estimator controls
+f63f1d7 2026-10-24 Add proprio_tactile_ends_est estimator variant
+b2d026c 2026-10-24 Apply ENDS_NOISE_CM patch to trainer and eval
+2f187ee 2026-10-24 Add ENDS_NOISE_CM endpoint-noise sensitivity option
+135803b 2026-10-23 Student object-endpoint variants on strict pure-DAgger source
+
+== penspin-student-penlen-20261031
+1923a67 2026-10-31 Refit f and threshold/delay calibration on pairs with the correct pen length
+3de74e1 2026-10-29 Tactile-gap baselines for the student: contact randomization (TACTILE_RAND) and SuperDex threshold/delay calibration (TACTILE_CALIB)
+97c4472 2026-10-29 Contact-alignment tactile channel (TACTILE_ALIGN_F) for the student; f v3 teacher+student b100 s0
+fa99bdc 2026-10-29 Add leave-one-group-out ablation of the privileged student
+e8a0db9 2026-10-28 Add proprio_priv_gt upper-bound diagnostic student
+61d301b 2026-10-28 Add TRAIN_SEED override for training-seed replication
+5133171 2026-10-26 Add stop-gradient and equal-capacity estimator controls
+f63f1d7 2026-10-24 Add proprio_tactile_ends_est estimator variant
+b2d026c 2026-10-24 Apply ENDS_NOISE_CM patch to trainer and eval
+2f187ee 2026-10-24 Add ENDS_NOISE_CM endpoint-noise sensitivity option
+135803b 2026-10-23 Student object-endpoint variants on strict pure-DAgger source
+
+== penspin-student-fv5-20261106
+d81ba4d 2026-11-06 f v5 for the student tactile channel: f refit with f-student rollout pairs
+1923a67 2026-10-31 Refit f and threshold/delay calibration on pairs with the correct pen length
+3de74e1 2026-10-29 Tactile-gap baselines for the student: contact randomization (TACTILE_RAND) and SuperDex threshold/delay calibration (TACTILE_CALIB)
+97c4472 2026-10-29 Contact-alignment tactile channel (TACTILE_ALIGN_F) for the student; f v3 teacher+student b100 s0
+fa99bdc 2026-10-29 Add leave-one-group-out ablation of the privileged student
+e8a0db9 2026-10-28 Add proprio_priv_gt upper-bound diagnostic student
+61d301b 2026-10-28 Add TRAIN_SEED override for training-seed replication
+5133171 2026-10-26 Add stop-gradient and equal-capacity estimator controls
+f63f1d7 2026-10-24 Add proprio_tactile_ends_est estimator variant
+b2d026c 2026-10-24 Apply ENDS_NOISE_CM patch to trainer and eval
+2f187ee 2026-10-24 Add ENDS_NOISE_CM endpoint-noise sensitivity option
+135803b 2026-10-23 Student object-endpoint variants on strict pure-DAgger source
+
+== penspin-student-objpose-dagger-20261022
+fa99bdc 2026-10-29 Add leave-one-group-out ablation of the privileged student
+e8a0db9 2026-10-28 Add proprio_priv_gt upper-bound diagnostic student
+61d301b 2026-10-28 Add TRAIN_SEED override for training-seed replication
+5133171 2026-10-26 Add stop-gradient and equal-capacity estimator controls
+f63f1d7 2026-10-24 Add proprio_tactile_ends_est estimator variant
+b2d026c 2026-10-24 Apply ENDS_NOISE_CM patch to trainer and eval
+2f187ee 2026-10-24 Add ENDS_NOISE_CM endpoint-noise sensitivity option
+135803b 2026-10-23 Student object-endpoint variants on strict pure-DAgger source
+

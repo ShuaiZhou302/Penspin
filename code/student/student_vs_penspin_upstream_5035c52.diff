@@ -1,0 +1,392 @@
+### NEW FILE (not in upstream): EXPERIMENT.md
+### NEW FILE (not in upstream): controls_patch.py
+### NEW FILE (not in upstream): dagger_train.py
+### NEW FILE (not in upstream): evaluate.sbatch
+### NEW FILE (not in upstream): falign_patch.py
+### NEW FILE (not in upstream): install.py
+### NEW FILE (not in upstream): noise_patch.py
+### NEW FILE (not in upstream): objpose_patch.py
+--- upstream/penspin/algo/models/models.py
++++ ours/penspin/algo/models/models.py
+@@ -13,6 +13,24 @@
+ from .block import TemporalConv, TemporalTransformer
+ 
+ 
++# Verified priv_info layout for the PenSpin Allegro config (61 dims) and leave-one-group-out groups.
++PRIV_LAYOUT = {'obj_position': (0, 3), 'obj_scale': (3, 4), 'obj_mass': (4, 5), 'obj_friction': (5, 6), 'obj_com': (6, 9),
++               'obj_orientation': (9, 13), 'obj_angvel': (13, 16), 'fingertip_position': (16, 28),
++               'obj_restitution': (28, 29), 'tactile': (29, 61)}
++PRIV_DROP_GROUPS = {'objpose': ('obj_position', 'obj_orientation'), 'angvel': ('obj_angvel',),
++                    'phys': ('obj_scale', 'obj_mass', 'obj_friction', 'obj_com', 'obj_restitution'),
++                    'ftpos': ('fingertip_position',), 'contact': ('tactile',), 'pc': ()}
++
++
++def priv_drop_group(input_mode):
++    """None for proprio_priv_gt, the group name for proprio_priv_gt_no_<group>; asserts on anything else."""
++    if input_mode == 'proprio_priv_gt':
++        return None
++    group = input_mode[len('proprio_priv_gt_no_'):]
++    assert input_mode.startswith('proprio_priv_gt_no_') and group in PRIV_DROP_GROUPS, input_mode
++    return group
++
++
+ class MLP(nn.Module):
+     def __init__(self, units, input_size, with_last_activation=True):
+         super(MLP, self).__init__()
+@@ -51,6 +69,9 @@
+         self.input_mode = kwargs.get('input_mode')
+         self.proprio_len = kwargs.get('proprio_len', 30)
+         self.student = kwargs.get('student', False)
++        self.priv_mode = str(self.input_mode).startswith('proprio_priv_gt')
++        self.proprio_family = self.priv_mode or self.input_mode in ('proprio', 'proprio_ends_gt', 'proprio_ends_est',
++                                                  'proprio_tactile_ends_est', 'proprio_tactile_ends_est_sg', 'proprio_extra_ends_est')
+ 
+         if self.priv_info:
+             policy_input_dim += self.priv_mlp[-1]
+@@ -86,10 +107,31 @@
+         if "ends" in self.input_mode and self.student:
+             policy_input_dim += 18
+             self.end_feat_extractor = MLP(units=[6,6,6], input_size=3, with_last_activation=False)
++        if self.input_mode == 'proprio_ends_est' and self.student:
++            # Estimates the 3-frame endpoint history from the proprio transformer feature only.
++            self.ends_head = MLP(units=[64, 18], input_size=32, with_last_activation=False)
++        if self.input_mode in ('proprio_tactile_ends_est', 'proprio_tactile_ends_est_sg') and self.student:
++            # Estimator also reads binary tactile history; tactile reaches the policy only through the estimate.
++            self.tactile_tconv = TemporalTransformer(32, 2, 2, 32, use_pe=True)
++            self.ends_head = MLP(units=[64, 18], input_size=64, with_last_activation=False)
++        if self.input_mode == 'proprio_extra_ends_est' and self.student:
++            # Equal-capacity control: second proprio transformer in place of the tactile encoder.
++            self.extra_tconv = TemporalTransformer(32, 2, 2, 32, use_pe=True)
++            self.ends_head = MLP(units=[64, 18], input_size=64, with_last_activation=False)
++
++        if self.priv_mode and self.student:
++            self.priv_drop = priv_drop_group(self.input_mode)
++            keep = torch.ones(kwargs['priv_info_dim'])
++            for name in PRIV_DROP_GROUPS[self.priv_drop] if self.priv_drop else ():
++                keep[slice(*PRIV_LAYOUT[name])] = 0.
++            self.register_buffer('priv_keep', keep, persistent=False)
++            # Upper-bound diagnostic: fresh encoders for the teacher's privileged inputs (not deployable).
++            self.priv_enc = MLP(units=self.priv_mlp, input_size=kwargs['priv_info_dim'], with_last_activation=False)
++            self.priv_point_mlp = MLP(units=self.point_mlp_units, input_size=3)
++            policy_input_dim += self.priv_mlp[-1] + self.point_mlp_units[-1]
+ 
+-        if self.student:
+-            # assert self.use_point_cloud_info
+-            # assert not self.priv_info
++        if self.student and not self.proprio_family:
++            # Other student modalities retain the original architecture.
+             new_priv_dim = 12
+             if self.use_point_cloud_info:
+                 policy_input_dim += 256
+@@ -217,14 +259,33 @@
+             if not self.student:
+                 extrin = torch.cat([extrin, pcs], dim=-1)
+         
++        ends_pred = None
+         if self.proprio_mode and self.student:
+-            proprio_feat = self.adapt_tconv(obs_dict['proprio_hist'])
+-            proprio_feat = self.all_fuse(proprio_feat)
++            proprio_hidden = self.adapt_tconv(obs_dict['proprio_hist'])
++            if self.input_mode == 'proprio_ends_est':
++                ends_pred = self.ends_head(proprio_hidden).view(obs.shape[0], 3, 6)
++            elif self.input_mode in ('proprio_tactile_ends_est', 'proprio_tactile_ends_est_sg'):
++                est_hidden = torch.cat([proprio_hidden, self.tactile_tconv(obs_dict['tactile_hist'])], dim=-1)
++                ends_pred = self.ends_head(est_hidden).view(obs.shape[0], 3, 6)
++            elif self.input_mode == 'proprio_extra_ends_est':
++                est_hidden = torch.cat([proprio_hidden, self.extra_tconv(obs_dict['proprio_hist'])], dim=-1)
++                ends_pred = self.ends_head(est_hidden).view(obs.shape[0], 3, 6)
++            proprio_feat = self.all_fuse(proprio_hidden)
+             extrin = torch.cat([extrin,proprio_feat], dim=-1) if extrin is not None else proprio_feat
++            if self.priv_mode:
++                if self.priv_drop == 'pc':
++                    pcs = obs.new_zeros(obs.shape[0], self.point_mlp_units[-1])
++                else:
++                    pcs = torch.max(self.priv_point_mlp(obs_dict['point_cloud_info']), 1)[0]
++                extrin = torch.cat([extrin, self.priv_enc(obs_dict['priv_info'] * self.priv_keep), pcs], dim=-1)
+             
+         if "ends" in self.input_mode and self.student:
+-            point_feat_1 = self.end_feat_extractor(obs_dict['obj_ends'][..., :3]).unsqueeze(-1)
+-            point_feat_2 = self.end_feat_extractor(obs_dict['obj_ends'][..., 3:]).unsqueeze(-1)
++            if ends_pred is None:
++                ends = obs_dict['obj_ends']
++            else:
++                ends = ends_pred.detach() if self.input_mode.endswith('_sg') else ends_pred
++            point_feat_1 = self.end_feat_extractor(ends[..., :3]).unsqueeze(-1)
++            point_feat_2 = self.end_feat_extractor(ends[..., 3:]).unsqueeze(-1)
+             point_feat = torch.cat([point_feat_1, point_feat_2], dim=-1)
+             point_feat = torch.max(point_feat, dim=-1)[0]
+             extrin = torch.cat([extrin, point_feat.view(obs.shape[0], -1)], dim=-1)
+@@ -232,6 +293,11 @@
+         if not self.student:
+             extrin = torch.tanh(extrin)
+             obs_input = torch.cat([obs, extrin], dim=-1)
++        elif self.proprio_family:
++            # The proprioceptive student must not read simulator-only fingertip
++            # positions from priv_info. Its actor input is obs plus history.
++            extrin_gt = ends_pred.reshape(obs.shape[0], -1) if ends_pred is not None else extrin.detach()
++            obs_input = torch.cat([obs, torch.tanh(extrin)], dim=-1)
+         else:
+             # extrin_gt = self.extrin_priv_mlp(obs_dict['priv_info'])
+ 
+--- upstream/penspin/algo/ppo/demon.py
++++ ours/penspin/algo/ppo/demon.py
+@@ -248,6 +248,9 @@
+         return res_dict
+ 
+     def train(self):
++        if os.environ.get("PENSPIN_DAGGER_CONTINUE") == "1":
++            from dagger_train import run
++            return run(self)
+         _t = time.time()
+         _last_t = time.time()
+         self.obs = self.env.reset()
+@@ -359,39 +362,54 @@
+             self.running_mean_std.load_state_dict(checkpoint['running_mean_std'])
+         if self.normalize_priv:
+             self.priv_mean_std.load_state_dict(checkpoint['priv_mean_std'])
+-        if self.normalize_point_cloud:
++        if self.normalize_point_cloud and 'point_cloud_mean_std' in checkpoint:
+             self.point_cloud_mean_std.load_state_dict(checkpoint['point_cloud_mean_std'])
+ 
+     def test(self):
++        if os.environ.get("PENSPIN_PROTOCOL_AUDIT") == "1":
++            from protocol_student_diagnostic import run
++            return run(self)
+         self.set_eval()
+         obs_dict = self.env.reset()
+         obs_dict['proprio_hist'] = obs_dict['proprio_hist'][..., -self.proprio_len:, :self.proprio_dim]
+-        while True:
+-            if not self.ppo_config.distill:
+-                if self.normalize_point_cloud:
+-                    point_cloud = self.point_cloud_mean_std(
+-                        obs_dict['point_cloud_info'].reshape(-1, 3)
+-                    ).reshape((obs_dict['obs'].shape[0], -1, 3))
+-                else:
+-                    point_cloud = obs_dict['point_cloud_info']
+-            if self.ppo_config.distill:
+-                student_pc = obs_dict['student_pc_info']
+-                input_dict = {
+-                    'obs': self.running_mean_std(obs_dict['obs']),
+-                    'proprio_hist': obs_dict['proprio_hist'],
+-                    'student_pc_info': student_pc,
+-                }
+-            else:
++        eval_steps = int(os.environ.get('PENSPIN_EVAL_STEPS', '800'))
++        if eval_steps <= 0:
++            raise ValueError('PENSPIN_EVAL_STEPS must be positive')
++        n = self.env.num_envs
++        ep_angle = torch.zeros(n, device=self.device)
++        ep_rot_reward = torch.zeros(n, device=self.device)
++        ep_length = torch.zeros(n, dtype=torch.long, device=self.device)
++        ep_success = torch.zeros(n, dtype=torch.bool, device=self.device)
++        ep_finished = torch.zeros(n, dtype=torch.bool, device=self.device)
++        with torch.no_grad():
++            for _ in range(eval_steps):
+                 input_dict = {
+                     'obs': self.running_mean_std(obs_dict['obs']),
+-                    'priv_info': self.priv_mean_std(obs_dict['priv_info']) if self.normalize_priv else obs_dict['priv_info'],
+                     'proprio_hist': obs_dict['proprio_hist'],
+-                    'point_cloud_info': point_cloud,
+                 }
+-            mu, extrin, extrin_gt = self.model.act_inference(input_dict)
+-            mu = torch.clamp(mu, -1.0, 1.0)
+-            obs_dict, r, done, info = self.env.step(mu, extrin_record=extrin)
+-            obs_dict['proprio_hist'] = obs_dict['proprio_hist'][..., -self.proprio_len:, :self.proprio_dim]
++                mu, extrin, _ = self.model.act_inference(input_dict)
++                mu = torch.clamp(mu, -1.0, 1.0)
++                obs_dict, _, done, _ = self.env.step(mu, extrin_record=extrin)
++                obs_dict['proprio_hist'] = obs_dict['proprio_hist'][..., -self.proprio_len:, :self.proprio_dim]
++                active = ~ep_finished
++                ep_angle += torch.where(active, self.env.last_step_axis_rotation_rad, 0.0)
++                ep_rot_reward += torch.where(active, self.env.last_step_clipped_rotation_reward, 0.0)
++                ep_length += active.long()
++                ep_success |= ep_angle >= np.pi
++                ep_finished |= done.bool() & active
++                if ep_finished.all():
++                    break
++        control_dt = self.env.control_freq_inv * self.env.dt
++        print(
++            f'EPISODE_METRICS trials={n} finished={int(ep_finished.sum())} '
++            f'success_ge_180={int(ep_success.sum())} '
++            f'success_rate={ep_success.float().mean().item():.4f} '
++            f'mean_rotation_rad={ep_angle.mean().item():.4f} '
++            f'mean_cumulative_rotation_reward={ep_rot_reward.mean().item():.4f} '
++            f'mean_duration_s={(ep_length.float().mean() * control_dt).item():.4f} '
++            f'eval_horizon_s={eval_steps * control_dt:.4f}',
++            flush=True,
++        )
+ 
+     def recon_criterion(self, out, target):
+         if self.use_l1:
+--- upstream/penspin/tasks/allegro_hand_hora.py
++++ ours/penspin/tasks/allegro_hand_hora.py
+@@ -400,6 +400,7 @@
+             contacts = self.contact_forces.clone()
+             contacts = contacts[:, self.sensor_handle_indices, :]
+             contacts = torch.norm(contacts, dim=-1)
++            contact_norm = contacts.clone()
+             contacts = torch.where(contacts >= self.contact_thresh, 1.0, 0.0)
+             latency_samples = torch.rand_like(self.last_contacts)
+             latency = torch.where(latency_samples < self.latency, 1, 0)  # with 0.25 probability, the signal is lagged
+@@ -410,6 +411,11 @@
+ 
+             sensed_contacts = torch.where(self.last_contacts > 0.1, mask * self.last_contacts, self.last_contacts)
+             self.sensed_contacts = sensed_contacts
++            student_contacts = sensed_contacts
++            if self._tactile_align() is not None:
++                student_contacts = self._aligned_contacts(contact_norm)
++            if self._tactile_baseline() is not None:
++                student_contacts = self._baseline_contacts(contact_norm)
+             if self.viewer:
+                 self.debug_contacts = sensed_contacts.detach().cpu().numpy()
+         
+@@ -440,7 +446,7 @@
+         cur_tar_buf = self.cur_targets[:, None]  # [1, 1, 16]
+         cur_obs_buf = torch.cat([cur_obs_buf, cur_tar_buf], dim=-1)  # [1, 1, 32]
+         if self.config['env']['privInfo']['enable_tactile']:
+-            cur_obs_buf = torch.cat([cur_obs_buf, sensed_contacts.unsqueeze(1)], dim=-1) # [1, 1, 32+12+32]
++            cur_obs_buf = torch.cat([cur_obs_buf, student_contacts.unsqueeze(1)], dim=-1) # [1, 1, 32+12+32]
+             cur_obs_buf = torch.cat([cur_obs_buf, self.fingertip_pos.clone().unsqueeze(1)], dim=-1) # [1, 1, 32+12]
+ 
+         self.obs_buf_lag_history[:] = torch.cat([prev_obs_buf, cur_obs_buf], dim=1)  # [1, 80, 16+16+32+12]
+@@ -529,6 +535,9 @@
+         object_angvel = angdiff / (self.control_freq_inv * self.dt)
+         vec_dot = (object_angvel * self.rot_axis_buf).sum(-1)
+         rotate_reward = torch.clip(vec_dot, max=self.angvel_clip_max, min=self.angvel_clip_min)
++        # Evaluation reads these before the next step; reset_idx overwrites object velocity.
++        self.last_step_axis_rotation_rad = vec_dot * (self.control_freq_inv * self.dt)
++        self.last_step_clipped_rotation_reward = rotate_reward
+         rotate_penalty = torch.where(vec_dot > self.angvel_penalty_threshold, vec_dot - self.angvel_penalty_threshold, 0)
+         # linear velocity: use position difference instead of self.object_linvel
+         object_linvel = ((self.object_pos - self.object_pos_prev) / (self.control_freq_inv * self.dt)).clone()
+@@ -636,6 +645,112 @@
+         plane_params.normal = gymapi.Vec3(0.0, 0.0, 1.0)
+         self.gym.add_ground(self.sim, plane_params)
+ 
++    def _tactile_align(self):
++        """Lazily loaded contact alignment model f (TACTILE_ALIGN_F), or None."""
++        if not hasattr(self, '_falign'):
++            self._falign = None
++            path = os.environ.get('TACTILE_ALIGN_F')
++            if path:
++                ck = torch.load(path, map_location=self.device)
++                sd = ck['state_dict']
++                net = torch.nn.Sequential(torch.nn.Linear(ck['din'], 256), torch.nn.ELU(), torch.nn.Linear(256, 256),
++                                          torch.nn.ELU(), torch.nn.Linear(256, 32)).to(self.device)
++                net.load_state_dict({k[len('mlp.'):]: v for k, v in sd.items() if k.startswith('mlp.')})
++                net.eval()
++                assert ck['din'] == 3 * 32 + 4 * 16, ck['din']
++                n = self.num_envs
++                self._falign = {'net': net, 'mean': sd['mean'].to(self.device), 'std': sd['std'].to(self.device),
++                                'chist': torch.zeros((n, 2, 32), device=self.device),
++                                'qprev': torch.zeros((n, 16), device=self.device),
++                                'nprev': torch.zeros(n, dtype=torch.long, device=self.device),
++                                'last': torch.zeros((n, 32), device=self.device)}
++                print('TACTILE_ALIGN_F', path, 'budget', ck.get('budget'), 'seed', ck.get('seed'), flush=True)
++        return self._falign
++
++    def _aligned_contacts(self, contact_norm):
++        fa = self._falign
++        at_reset = self.at_reset_buf.bool()  # envs reset in this step's post_physics_step (mirrors last_contacts reset)
++        fa['last'][at_reset] = 0.0
++        c = torch.log1p(contact_norm / 0.05)
++        k = fa['nprev'][:, None]
++        h1 = torch.where(k >= 1, fa['chist'][:, 0], torch.zeros_like(c))
++        h2 = torch.where(k >= 2, fa['chist'][:, 1], torch.zeros_like(c))
++        q = self.allegro_hand_dof_pos
++        qp = torch.where(k >= 1, fa['qprev'], q)
++        act = getattr(self, 'actions', None)
++        act = torch.zeros_like(q) if act is None else act.clamp(-1.0, 1.0)
++        x = torch.cat([c, h1, h2, q, qp, self.cur_targets, act], dim=-1)
++        with torch.no_grad():
++            pred = (fa['net']((x - fa['mean']) / fa['std']) > 0).float()
++        fa['chist'] = torch.stack([c, h1], dim=1)
++        fa['qprev'] = q.clone()
++        fa['nprev'] = torch.clamp(fa['nprev'] + 1, max=2)
++        fa['nprev'][at_reset] = 0  # the next step is step 0 of the new episode
++        latency = torch.where(torch.rand_like(pred) < self.latency, 1.0, 0.0)
++        fa['last'] = fa['last'] * latency + pred * (1 - latency)
++        mask = torch.where(torch.rand_like(pred) < self.sensor_noise, 0.0, 1.0)
++        self.aligned_raw_contacts = pred
++        return torch.where(fa['last'] > 0.1, mask * fa['last'], fa['last'])
++
++    def _tactile_baseline(self):
++        """Student tactile baseline channel (TACTILE_RAND=1 or TACTILE_CALIB=<npz>), or None."""
++        if not hasattr(self, '_tbase'):
++            self._tbase = None
++            rand = os.environ.get('TACTILE_RAND') == '1'
++            calib = os.environ.get('TACTILE_CALIB')
++            if rand or calib:
++                assert not (rand and calib) and not os.environ.get('TACTILE_ALIGN_F'), 'tactile channels are exclusive'
++                n, dev = self.num_envs, self.device
++                tb = {'rand': rand, 'hist': torch.zeros((n, 2, 32), device=dev),
++                      'nhist': torch.zeros(n, dtype=torch.long, device=dev), 'last': torch.zeros((n, 32), device=dev)}
++                if calib:
++                    c = np.load(calib)
++                    tb['taus'] = torch.tensor(c['taus'], dtype=torch.float, device=dev)[None].repeat(n, 1)
++                    tb['lag'] = torch.full((n,), int(c['lag']), dtype=torch.long, device=dev)
++                    print('TACTILE_CALIB', calib, 'lag', int(c['lag']), flush=True)
++                else:
++                    tb.update(taus=torch.zeros((n, 32), device=dev), lag=torch.zeros(n, dtype=torch.long, device=dev),
++                              miss=torch.zeros((n, 1), device=dev), spur=torch.zeros((n, 1), device=dev))
++                    self._tbase = tb
++                    self._resample_tactile_rand(torch.ones(n, dtype=torch.bool, device=dev))
++                    print('TACTILE_RAND thr x[0.5,4] miss[0,0.5] spur[0,0.01] lag{0,1,2}', flush=True)
++                self._tbase = tb
++        return self._tbase
++
++    def _resample_tactile_rand(self, envs):
++        tb = self._tbase
++        m = int(envs.sum())
++        if m:
++            u = torch.rand((m, 32), device=self.device)
++            tb['taus'][envs] = 0.05 * torch.exp(np.log(0.5) + u * np.log(8.0))
++            tb['miss'][envs] = 0.5 * torch.rand((m, 1), device=self.device)
++            tb['spur'][envs] = 0.01 * torch.rand((m, 1), device=self.device)
++            tb['lag'][envs] = torch.randint(0, 3, (m,), device=self.device)
++
++    def _baseline_contacts(self, contact_norm):
++        tb = self._tbase
++        at_reset = self.at_reset_buf.bool()  # same reset convention as _aligned_contacts
++        tb['last'][at_reset] = 0.0
++        k = tb['nhist'][:, None]
++        h1 = torch.where(k >= 1, tb['hist'][:, 0], torch.zeros_like(contact_norm))
++        h2 = torch.where(k >= 2, tb['hist'][:, 1], torch.zeros_like(contact_norm))
++        lag = tb['lag'][:, None]
++        norm = torch.where(lag == 0, contact_norm, torch.where(lag == 1, h1, h2))
++        raw = (norm >= tb['taus']).float()
++        if tb['rand']:
++            raw = raw * (torch.rand_like(raw) >= tb['miss']).float()
++            raw = torch.maximum(raw, (torch.rand_like(raw) < tb['spur']).float())
++        tb['hist'] = torch.stack([contact_norm, h1], dim=1)
++        tb['nhist'] = torch.clamp(tb['nhist'] + 1, max=2)
++        tb['nhist'][at_reset] = 0  # the next step is step 0 of the new episode
++        if tb['rand']:
++            self._resample_tactile_rand(at_reset)
++        latency = torch.where(torch.rand_like(raw) < self.latency, 1.0, 0.0)
++        tb['last'] = tb['last'] * latency + raw * (1 - latency)
++        mask = torch.where(torch.rand_like(raw) < self.sensor_noise, 0.0, 1.0)
++        self.baseline_raw_contacts = raw
++        return torch.where(tb['last'] > 0.1, mask * tb['last'], tb['last'])
++
+     def pre_physics_step(self, actions):
+         self.actions = actions.clone().to(self.device)
+         targets = self.prev_targets + self.action_scale * self.actions
+### NEW FILE (not in upstream): protocol_student_diagnostic.py
+### NEW FILE (not in upstream): scratch.sbatch
+### NEW FILE (not in upstream): tacbase_patch.py
+### NEW FILE (not in upstream): tactile_calib/calib_M.json
+### NEW FILE (not in upstream): tactile_calib/calib_v4.json
+### NEW FILE (not in upstream): tactile_patch.py
+### NEW FILE (not in upstream): test_falign_port.py
+### NEW FILE (not in upstream): test_tacbase.py
+--- upstream/train.py
++++ ours/train.py
+@@ -110,6 +110,7 @@
+         os.system(f'git diff HEAD > {output_dif}/gitdiff{gitdiff_suffix}.patch')
+         with open(os.path.join(output_dif, f'config_{date}_{git_hash()}.yaml'), 'w') as f:
+             f.write(OmegaConf.to_yaml(config))
++        assert not config.train.load_path, "scratch job must not load a student checkpoint"
+         agent.restore_train(config.train.load_path)
+         agent.train()
+ 

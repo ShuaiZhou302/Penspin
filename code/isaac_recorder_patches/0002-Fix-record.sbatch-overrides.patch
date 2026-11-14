@@ -1,0 +1,33 @@
+From a1de1576de3d113fdf96ff22d6084be5959cd702 Mon Sep 17 00:00:00 2001
+From: shuaizhou
+Date: Thu, 29 Oct 2026 03:20:02 +0800
+Subject: [PATCH 02/14] Fix record.sbatch overrides
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ record.sbatch | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/record.sbatch b/record.sbatch
+index 2058c57..d1a4b2d 100644
+--- a/record.sbatch
++++ b/record.sbatch
+@@ -34,12 +34,12 @@ python train.py task=AllegroHandHora headless=True seed="$SEED" test=True \
+   train.ppo.distill=True train.ppo.use_l1=True train.ppo.enable_latent_loss=False train.ppo.priv_info=False \
+   train.ppo.proprio_mode=True train.ppo.proprio_len=30 train.ppo.input_mode="${INPUT_MODE:?}" train.ppo.is_demon=True \
+   task.env.numEnvs=64 task.env.numObservations=276 \
+-  task.env.randomForceProbScalar=0.25 task.env.rotation_axis=+z \
+-  task.env.reward.pencil_z_dist_penalty_scale=-1.0 task.env.forceScale=2 \
++  task.env.randomForceProbScalar=0 task.env.rotation_axis=+z \
++  task.env.reward.pencil_z_dist_penalty_scale=-1.0 task.env.forceScale=0 \
+   task.env.randomization.obs_noise_t_scale=0.01 task.env.randomization.obs_noise_e_scale=0.02 \
+   task.env.object.type=cylinder_pencil-5-7 task.env.genGraspCategory=pencil \
+   task.env.privInfo.enable_obj_orientation=True task.env.privInfo.enable_ft_pos=True \
+   task.env.privInfo.enable_obj_angvel=True task.env.privInfo.enable_tactile=True \
+   task.env.randomization.randomizeScaleList=[0.29] task.env.grasp_cache_name=allegro_round_tip_thin \
+   task.env.hora.point_cloud_sampled_dim=100 task.env.initPoseMode=low task.env.reset_height_threshold=0.605 \
+-  task.env.reward.angvelClipMax=0.5 task.env.enable_obj_ends=True wandb_activate=False \n  task.env.forceScale=0 task.env.randomForceProbScalar=0 task.env.randomization.action_noise_e_scale=0 \n  task.env.randomization.action_noise_t_scale=0 task.env.randomization.randomizePDGains=False \n  task.env.randomization.randomizeCOM=False task.env.randomization.randomizeFriction=${RANDOMIZE_FRICTION:-False}
++  task.env.reward.angvelClipMax=0.5 task.env.enable_obj_ends=True wandb_activate=False \n  task.env.randomization.action_noise_e_scale=0 task.env.randomization.action_noise_t_scale=0 \n  task.env.randomization.randomizePDGains=False task.env.randomization.randomizeCOM=False \n  task.env.randomization.randomizeFriction=${RANDOMIZE_FRICTION:-False}
+-- 
+2.43.0
+

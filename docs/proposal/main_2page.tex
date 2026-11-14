@@ -1,0 +1,39 @@
+\documentclass{article}
+% The course's Project template supplies this CoRL style file.
+\usepackage[preprint]{corl_2023}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\title{Mind the Touch Gap: Real-to-Sim Contact Alignment for Dexterous Pen Spinning}
+\hypersetup{pdftitle={Mind the Touch Gap: Real-to-Sim Contact Alignment for Dexterous Pen Spinning},pdfauthor={Xinyao Li, Wen-Han Hsieh, Seungjae Baek, Shuai Zhou, Yuan Li, Yusu Fang},pdfsubject={16-831 Fall 2026 Course Project Proposal}}
+\author{
+  Xinyao Li \And Wen-Han Hsieh \And Seungjae Baek
+  \AND
+  Shuai Zhou \And Yuan Li \And Yusu Fang
+}
+
+\begin{document}
+\maketitle
+\noindent\textbf{Team size:} 6.
+
+\begin{abstract}
+Small contact errors can derail fast in-hand pen spinning. We propose to learn a mapping from Isaac Gym contact observations to target-simulator contact labels using a small number of paired replay attempts. A contact-aware student is then distilled in Isaac Gym using aligned contact and evaluated without target-policy training in Project SuperDex. This sim-to-sim study tests whether improving the observation channel helps transfer while leaving contact dynamics unchanged.
+\end{abstract}
+\keywords{Dexterous manipulation, contact alignment, sim-to-sim transfer}
+
+\section{Motivation and prior work}
+PenSpin~\citep{wang2024penspin} showed that a privileged oracle can teach a proprioceptive student to spin a pen, but its sim-trained policy needed successful target-domain replays for hardware adaptation. Fast contact changes make such transfer hard: an apparent touch in one simulator may be absent or delayed in another. Prior sim-to-real work adapts simulator parameters from target experience~\citep{chebotar2019closing}; recent tactile calibration work likewise uses target data to improve simulated touch~\citep{real2sim2real2026}. We ask a narrower question: can a few target replays improve the \emph{contact observations used to train the policy}, even when the source physics stays fixed? Project SuperDex~\citep{superdex2026} provides a target simulator in which contact labels and controlled comparisons can be measured before making any hardware claim.
+
+\section{Idea and intuition}
+We retain PenSpin's privileged oracle, reproduce its proprio-only student, and add a new student that receives binary, link-level contact. This contact-aware student is our modification to PenSpin. Starting from matched initial states, we replay the same oracle actions in Isaac Gym and SuperDex and log source contact, target contact, joint state, and preceding actions. A small temporal model predicts target contact from source contact and proprioception available before each action. Its predicted probabilities are thresholded to binary contacts, matching the native target format supplied to the student at deployment. We re-distill the student from the fixed oracle in Isaac Gym with these aligned contacts.
+
+The intuition is that a student trained with target-like touch cues may rely on more consistent evidence for when to change grip. This changes its observations, not friction, collision response, or object trajectories. Open-loop paired replays can drift into different states, so we will measure that divergence and use a separate state-matched reset comparison to diagnose pairing error; the latter requires privileged simulator access.
+
+\section{Experiments and evaluation}
+First, a short Allegro-hand replay in SuperDex will check control timing and link-level contact logging before scaling the port. We will compare (i) PenSpin's proprio-only student, (ii) a raw-contact student, (iii) contact noise/dropout/delay randomization, (iv) simple per-link threshold/delay calibration, (v) our learned alignment, and (vi) PenSpin-style target fine-tuning. The target-data budgets will be 10, 25, 50, and 100 \emph{attempted} replays for every method using target data. Fine-tuning may filter successful trajectories; we will report how many successes each budget yields. The state-matched variant is a diagnostic with extra state access, not a deployable baseline.
+
+On held-out SuperDex episodes with matched objects and initial states, we will report completed rotations, time to drop, and success rate. On held-out replay data, we will report per-link contact precision, recall, F1, and onset timing error, together with state divergence. We will vary target friction and compliance to see when observation alignment helps and when remaining dynamics errors dominate. If the SuperDex port stalls, we will report the feasibility result and use a target simulator with explicit contact labels for the same comparison. A gain in this study would support contact-observation alignment in simulation; it would not establish corrected dynamics or hardware transfer.
+
+\acknowledgments{ChatGPT assisted with editorial revision and LaTeX formatting.}
+\bibliography{refs}
+\end{document}

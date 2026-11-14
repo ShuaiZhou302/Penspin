@@ -1,0 +1,80 @@
+From a4d0d7d979bb0c554cb83ba6401550a1413fba5c Mon Sep 17 00:00:00 2001
+From: shuaizhou
+Date: Thu, 29 Oct 2026 04:12:12 +0800
+Subject: [PATCH 10/14] Record raw teacher inputs/actions; export teacher;
+ obs-noise knobs
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ export_teacher.py | 11 +++++++++++
+ record.sbatch     |  2 +-
+ record_replay.py  |  8 +++++++-
+ 3 files changed, 19 insertions(+), 2 deletions(-)
+ create mode 100644 export_teacher.py
+
+diff --git a/export_teacher.py b/export_teacher.py
+new file mode 100644
+index 0000000..e030acf
+--- /dev/null
++++ b/export_teacher.py
+@@ -0,0 +1,11 @@
++"""Export the frozen teacher (705613 best_reward) and its normalizers to npz for a numpy re-implementation."""
++import sys, numpy as np, torch
++ck = torch.load(sys.argv[1], map_location='cpu')
++out = {}
++for k, v in ck['model'].items():
++    out['model.' + k] = v.float().numpy()
++for name in ('running_mean_std', 'priv_mean_std', 'point_cloud_mean_std'):
++    for k, v in ck[name].items():
++        out[f'{name}.{k}'] = v.double().numpy()
++np.savez(sys.argv[2], **out)
++print('EXPORTED', len(out), sorted(k for k in out if k.startswith('model.'))[:40])
+diff --git a/record.sbatch b/record.sbatch
+index a7ea3c9..5d2d92d 100644
+--- a/record.sbatch
++++ b/record.sbatch
+@@ -36,7 +36,7 @@ python train.py task=AllegroHandHora headless=True seed="$SEED" test=True \
+   task.env.numEnvs=64 task.env.numObservations=276 \
+   task.env.randomForceProbScalar=0 task.env.rotation_axis=+z \
+   task.env.reward.pencil_z_dist_penalty_scale=-1.0 task.env.forceScale=0 \
+-  task.env.randomization.obs_noise_t_scale=0.01 task.env.randomization.obs_noise_e_scale=0.02 \
++  task.env.randomization.obs_noise_t_scale=${OBS_NOISE_T:-0.01} task.env.randomization.obs_noise_e_scale=${OBS_NOISE_E:-0.02} \
+   task.env.object.type=cylinder_pencil-5-7 task.env.genGraspCategory=pencil \
+   task.env.privInfo.enable_obj_orientation=True task.env.privInfo.enable_ft_pos=True \
+   task.env.privInfo.enable_obj_angvel=True task.env.privInfo.enable_tactile=True \
+diff --git a/record_replay.py b/record_replay.py
+index 13ebe50..8f06b7c 100644
+--- a/record_replay.py
++++ b/record_replay.py
+@@ -52,7 +52,9 @@ def run(agent):
+     out['obj_mass_prop'] = torch.tensor([p.mass for p in props])
+     print('OBJ_PROPS', json.dumps({'inertia_diag_env0': [float(out['obj_inertia'][0, i, i]) for i in range(3)],
+                                    'mass_env0': float(out['obj_mass_prop'][0]), 'scale_env0': float(out['obj_scale'][0])}), flush=True)
+-    rec = {k: [] for k in ('target', 'q', 'obj_pose', 'contact_norm', 'done', 'rot_rad')}
++    rec = {k: [] for k in ('target', 'q', 'obj_pose', 'contact_norm', 'done', 'rot_rad',
++                           'in_obs', 'in_priv', 'in_pc', 'action', 'ft_pos')}
++    out['obj_point_cloud_local'] = env.obj_point_clouds.clone()
+     alive = torch.ones(n, dtype=torch.bool, device=agent.device)
+     lengths = torch.full((n,), T, dtype=torch.long, device=agent.device)
+     for t in range(T):
+@@ -65,6 +67,9 @@ def run(agent):
+                           'point_cloud_info': pc,
+                           'proprio_hist': obs['proprio_hist'][..., -agent.proprio_len:, :agent.proprio_dim]}
+             action = agent.demon_model.act_inference(teacher_in)[0].clamp(-1, 1)
++            # raw (unnormalized) teacher inputs at step t and the teacher action, for porting checks
++            rec['in_obs'].append(obs['obs'].clone()); rec['in_priv'].append(obs['priv_info'].clone())
++            rec['in_pc'].append(obs['point_cloud_info'].clone()); rec['action'].append(action.clone())
+             if replay:
+                 action = ((src_target[:, t] - env.prev_targets) / env.action_scale).clamp(-1, 1)
+             obs, _, done, _ = env.step(action)
+@@ -73,6 +78,7 @@ def run(agent):
+         rec['obj_pose'].append(torch.cat((env.object_pos, env.object_rot), -1).clone())
+         rec['contact_norm'].append(env.contact_forces[:, env.sensor_handle_indices, :].norm(dim=-1).clone())
+         rec['rot_rad'].append(env.last_step_axis_rotation_rad.clone())
++        rec['ft_pos'].append(env.fingertip_pos.clone())
+         d = done.bool()
+         rec['done'].append(d.clone())
+         newly = alive & d
+-- 
+2.43.0
+

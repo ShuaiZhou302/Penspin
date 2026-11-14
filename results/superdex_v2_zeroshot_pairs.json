@@ -1,0 +1,75 @@
+{
+ "note": "SuperDex mu=1.0, mesh inertia, obs noise on, 64 eps x 3 eval seeds (42-44); +- = std over eval seeds (ddof 1), not training seeds. v2 = after sdx_env ActorHandle fix (sha 54be0b53); v1 tactile numbers invalid.",
+ "zero_shot_v2": {
+  "teacher": {
+   "ig": [
+    141.01,
+    126.989,
+    140.874
+   ],
+   "sdx": [
+    38.55,
+    38.294,
+    35.621
+   ]
+  },
+  "proprio_student_unaffected_v1": {
+   "ig_mean": 14.2,
+   "sdx_mean": 12.8,
+   "sdx_std": 0.8
+  },
+  "btactile_student": {
+   "ig": [
+    40.533,
+    49.104,
+    42.293
+   ],
+   "sdx": [
+    17.585,
+    15.418,
+    16.25
+   ]
+  }
+ },
+ "teacher_nonoise_v2_mu_sweep": {
+  "rec(1.0)": 43.747,
+  "0.5": 66.946,
+  "0.75": 56.763,
+  "1.5": 32.001,
+  "2.0": 28.258,
+  "ig": 139.899
+ },
+ "pairs_v2": {
+  "dataset": "runs/pairs_v2/dataset_mu1.npz sha 548d981b",
+  "stats": "runs/pairs_v2/stats_mu1.json sha 1c3b771d",
+  "train": {
+   "episodes": 119,
+   "steps": 36265
+  },
+  "val": {
+   "episodes": 62,
+   "steps": 18393
+  },
+  "shift_btactile": {
+   "episodes": 62,
+   "steps": 6598
+  },
+  "identity_f1_excl_pen_channel": {
+   "train": 0.633,
+   "val": 0.621,
+   "shift": 0.638
+  },
+  "on_rate_excl_pen": {
+   "ig": 0.0787,
+   "sdx": 0.0458
+  },
+  "ig_on_missed_by_sdx": 0.509,
+  "sdx_on_not_in_ig": 0.156,
+  "resync_one_step_err": {
+   "q_rad_median": 0.0039,
+   "pen_cm_median": 0.185,
+   "pen_deg_median": 3.7
+  },
+  "open_loop_steps_pen_err_lt_1cm": 0.075
+ }
+}

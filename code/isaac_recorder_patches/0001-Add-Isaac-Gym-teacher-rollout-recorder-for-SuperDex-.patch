@@ -1,0 +1,160 @@
+From f423da2d1abf59a6279235d7845d3adbfe05badd Mon Sep 17 00:00:00 2001
+From: claude <noreply@anthropic.com>
+Date: Thu, 29 Oct 2026 03:19:36 +0800
+Subject: [PATCH 01/14] Add Isaac Gym teacher rollout recorder for SuperDex
+ replay
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ penspin/algo/ppo/demon.py |  3 ++
+ record.sbatch             | 45 +++++++++++++++++++++++++
+ record_replay.py          | 71 +++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 119 insertions(+)
+ create mode 100644 record.sbatch
+ create mode 100644 record_replay.py
+
+diff --git a/penspin/algo/ppo/demon.py b/penspin/algo/ppo/demon.py
+index fe33dff..67657e8 100644
+--- a/penspin/algo/ppo/demon.py
++++ b/penspin/algo/ppo/demon.py
+@@ -366,6 +366,9 @@ class DemonTrain(object):
+             self.point_cloud_mean_std.load_state_dict(checkpoint['point_cloud_mean_std'])
+ 
+     def test(self):
++        if os.environ.get("PENSPIN_RECORD") == "1":
++            from record_replay import run
++            return run(self)
+         if os.environ.get("PENSPIN_PROTOCOL_AUDIT") == "1":
+             from protocol_student_diagnostic import run
+             return run(self)
+diff --git a/record.sbatch b/record.sbatch
+new file mode 100644
+index 0000000..2058c57
+--- /dev/null
++++ b/record.sbatch
+@@ -0,0 +1,45 @@
++#!/bin/bash -l
++#SBATCH -J penspin-record
++#SBATCH -p <PARTITION>
++#SBATCH --nodes=1
++#SBATCH --ntasks=1
++#SBATCH --gres=gpu:1
++#SBATCH --cpus-per-task=8
++#SBATCH --mem=32G
++#SBATCH --time=00:25:00
++#SBATCH --array=0
++#SBATCH -o <PROJECT_ROOT>/penspin-superdex-port-20261028/isaac/runs/record_%A_%a.out
++#SBATCH -e <PROJECT_ROOT>/penspin-superdex-port-20261028/isaac/runs/record_%A_%a.err
++set -euo pipefail
++REPO=<PROJECT_ROOT>/penspin-superdex-port-20261028/isaac
++cd "$REPO"
++sha256sum -c SOURCE_SHA256SUMS --quiet
++module load gcc/11.5
++export PATH="$REPO/.conda/bin:$PATH"
++export LD_LIBRARY_PATH="$REPO/.conda/lib:${LD_LIBRARY_PATH:-}"
++export PYTHONUNBUFFERED=1 OMP_NUM_THREADS=8 PENSPIN_RECORD=1
++export TORCH_EXTENSIONS_DIR="$REPO/runs/torch_${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
++ITEM=${SLURM_ARRAY_TASK_ID}
++SEED=$((${SEED_BASE:-42} + ITEM))
++MODE="objpose_${INPUT_MODE:?}"
++export AUDIT_MODE=baseline
++export AUDIT_LABEL="${MODE}_pilot${PILOT_ID}_seed${SEED}_${SLURM_ARRAY_JOB_ID}"
++export RECORD_LABEL="${RECORD_TAG:?}_seed${SEED}_${SLURM_ARRAY_JOB_ID}"
++TEACHER=<PROJECT_ROOT>/penspin-16831/outputs/AllegroHandHora/teacher_paper500m_705613/stage1_nn/best_reward_86.48.pth
++STUDENT_CHECKPOINT="${STUDENT_CHECKPOINT:-$REPO/outputs/AllegroHandHora/objpose_${INPUT_MODE}_${PILOT_ID}/stage1_nn/final.pth}"
++test -s "$STUDENT_CHECKPOINT"
++python train.py task=AllegroHandHora headless=True seed="$SEED" test=True \
++  train.algo=DemonTrain train.demon_path="$TEACHER" train.load_path="$STUDENT_CHECKPOINT" \
++  train.ppo.output_name="AllegroHandHora/protocol_${AUDIT_LABEL}" \
++  train.ppo.distill=True train.ppo.use_l1=True train.ppo.enable_latent_loss=False train.ppo.priv_info=False \
++  train.ppo.proprio_mode=True train.ppo.proprio_len=30 train.ppo.input_mode="${INPUT_MODE:?}" train.ppo.is_demon=True \
++  task.env.numEnvs=64 task.env.numObservations=276 \
++  task.env.randomForceProbScalar=0.25 task.env.rotation_axis=+z \
++  task.env.reward.pencil_z_dist_penalty_scale=-1.0 task.env.forceScale=2 \
++  task.env.randomization.obs_noise_t_scale=0.01 task.env.randomization.obs_noise_e_scale=0.02 \
++  task.env.object.type=cylinder_pencil-5-7 task.env.genGraspCategory=pencil \
++  task.env.privInfo.enable_obj_orientation=True task.env.privInfo.enable_ft_pos=True \
++  task.env.privInfo.enable_obj_angvel=True task.env.privInfo.enable_tactile=True \
++  task.env.randomization.randomizeScaleList=[0.29] task.env.grasp_cache_name=allegro_round_tip_thin \
++  task.env.hora.point_cloud_sampled_dim=100 task.env.initPoseMode=low task.env.reset_height_threshold=0.605 \
++  task.env.reward.angvelClipMax=0.5 task.env.enable_obj_ends=True wandb_activate=False \n  task.env.forceScale=0 task.env.randomForceProbScalar=0 task.env.randomization.action_noise_e_scale=0 \n  task.env.randomization.action_noise_t_scale=0 task.env.randomization.randomizePDGains=False \n  task.env.randomization.randomizeCOM=False task.env.randomization.randomizeFriction=${RANDOMIZE_FRICTION:-False}
+diff --git a/record_replay.py b/record_replay.py
+new file mode 100644
+index 0000000..8ca7729
+--- /dev/null
++++ b/record_replay.py
+@@ -0,0 +1,71 @@
++"""Record closed-loop teacher rollouts in Isaac Gym for open-loop replay in SuperDex.
++
++One episode per env, starting from the state left by env.reset() (reset + its zero-action warmup step). Per control
++step t the file stores the clamped joint target used during that step, and the true joint positions, object pose and
++raw |net contact force| of the 32 tactile channels after it. Steps from the first done onward are invalid (Isaac Gym
++resets inside post_physics_step); lengths[e] counts the valid steps of env e.
++Requires deterministic dynamics inputs: no random object forces, no action noise, no PD-gain or COM randomization.
++"""
++import json
++import os
++import numpy as np
++import torch
++
++IG_DOF_NAMES = [f'joint_{i}.0' for i in (0, 1, 2, 3, 12, 13, 14, 15, 4, 5, 6, 7, 8, 9, 10, 11)]
++
++
++def run(agent):
++    env, n, T = agent.env, agent.env.num_envs, agent.env.max_episode_length
++    names = list(env.gym.get_actor_dof_names(env.envs[0], env.hand_actors[0]))
++    assert names == IG_DOF_NAMES, names
++    sidx = [int(i) for i in env.sensor_handle_indices]
++    assert env.contact_sensor_names[11] == 'link_13.0_fsr' and sidx[11] == -1 and min(sidx[:11] + sidx[12:]) >= 0, sidx
++    assert env.contact_forces.shape[1] == env.num_allegro_hand_bodies + 1  # index -1 is the object
++    assert env.force_scale == 0 and env.random_action_noise_e_scale == 0 and env.random_action_noise_t_scale == 0
++    assert not env.randomize_pd_gains and not env.randomize_com and env.torque_control
++    agent.set_eval()
++    obs = env.reset()
++    pd = env.priv_info_dict
++    priv = env.priv_info_buf
++    out = {'init_q': env.allegro_hand_dof_pos.clone(), 'init_qd': env.allegro_hand_dof_vel.clone(),
++           'init_obj': env.root_state_tensor[env.object_indices, :13].clone(), 'init_target': env.cur_targets.clone(),
++           'obj_scale': priv[:, pd['obj_scale'][0]].clone(), 'obj_mass': priv[:, pd['obj_mass'][0]].clone(),
++           'obj_friction': priv[:, pd['obj_friction'][0]].clone(), 'obj_restitution': priv[:, pd['obj_restitution'][0]].clone()}
++    rec = {k: [] for k in ('target', 'q', 'obj_pose', 'contact_norm', 'done', 'rot_rad')}
++    alive = torch.ones(n, dtype=torch.bool, device=agent.device)
++    lengths = torch.full((n,), T, dtype=torch.long, device=agent.device)
++    for t in range(T):
++        with torch.no_grad():
++            pc = obs['point_cloud_info']
++            if agent.normalize_point_cloud:
++                pc = agent.point_cloud_mean_std_demon(pc.reshape(-1, 3)).reshape(n, -1, 3)
++            teacher_in = {'obs': agent.running_mean_std_demon(obs['obs']),
++                          'priv_info': agent.priv_mean_std_demon(obs['priv_info']) if agent.normalize_priv else obs['priv_info'],
++                          'point_cloud_info': pc,
++                          'proprio_hist': obs['proprio_hist'][..., -agent.proprio_len:, :agent.proprio_dim]}
++            action = agent.demon_model.act_inference(teacher_in)[0].clamp(-1, 1)
++            obs, _, done, _ = env.step(action)
++        rec['target'].append(env.cur_targets.clone())
++        rec['q'].append(env.allegro_hand_dof_pos.clone())
++        rec['obj_pose'].append(torch.cat((env.object_pos, env.object_rot), -1).clone())
++        rec['contact_norm'].append(env.contact_forces[:, env.sensor_handle_indices, :].norm(dim=-1).clone())
++        rec['rot_rad'].append(env.last_step_axis_rotation_rad.clone())
++        d = done.bool()
++        rec['done'].append(d.clone())
++        newly = alive & d
++        lengths[newly] = t
++        alive &= ~d
++    arrays = {k: torch.stack(v, 1).cpu().numpy() for k, v in rec.items()}
++    arrays.update({k: v.cpu().numpy() for k, v in out.items()})
++    arrays['lengths'] = lengths.cpu().numpy()
++    arrays['sensor_names'] = np.array(env.contact_sensor_names)
++    arrays['dof_names'] = np.array(names)
++    label = os.environ['RECORD_LABEL']
++    path = os.path.join('runs', f'record_{label}.npz')
++    np.savez_compressed(path, **arrays)
++    summary = {'label': label, 'envs': n, 'T': T, 'mean_valid_steps': float(lengths.float().mean()),
++               'full_episodes': int((lengths == T).sum()), 'contact_on_fraction': float((arrays['contact_norm'] >= 0.05).mean()),
++               'scale_range': [float(out['obj_scale'].min()), float(out['obj_scale'].max())],
++               'mass_range': [float(out['obj_mass'].min()), float(out['obj_mass'].max())],
++               'friction_unique': sorted(set(round(float(x), 4) for x in out['obj_friction']))[:5]}
++    print('RECORD_SUMMARY', json.dumps(summary), flush=True)
+-- 
+2.43.0
+

@@ -1,0 +1,77 @@
+--- compliance/tools/sdx_env.py
++++ admissible/tools/sdx_env.py
+@@ -20,6 +20,11 @@
+ # fields on every hand link and on the pen. Unset = SuperDex defaults, identical to penspin-superdex-penlen-20261031.
+ CONTACT_OVERRIDE = {k: float(v) for k, v in (kv.split('=') for kv in os.environ.get('SDX_CONTACT', '').split(',') if kv)}
+ 
++# Admissibility search (penspin-superdex-admissible-20261107): SDX_JOINT="limit_stiffness=..,limit_damping=.." on the 16
++# revolute joints; SDX_SUBSTEPS=n splits each 5 ms Isaac Gym physics step into n SuperDex steps with the torque held
++# (zero-order hold, so the PD law and its 5 ms update stay identical to Isaac Gym). Unset = previous behaviour.
++JOINT_OVERRIDE = {k: float(v) for k, v in (kv.split('=') for kv in os.environ.get('SDX_JOINT', '').split(',') if kv)}
++SUBSTEPS = int(os.environ.get('SDX_SUBSTEPS', '1'))
+ 
+ def contact_params(friction):
+     cp = sdp.ContactParams(); cp.coulomb_friction_coefficient = friction
+@@ -91,6 +96,9 @@
+             j = joints[name]; axis = [float(x) for x in j.axis]
+             j.min_limit = [lo * a for a in axis]; j.max_limit = [hi * a for a in axis]
+             j.effort_limit = TORQUE_LIMIT
++            for k, v in JOINT_OVERRIDE.items():
++                assert hasattr(j, k), k
++                setattr(j, k, v)
+         self.ctx = sdr.create_context()
+         self.bot = sdr.create_bot(self.scene, pf, self.ctx)
+         self.hand = self.bot.get_articulated_actor()
+@@ -163,16 +171,20 @@
+         self.pen.set_velocity([float(x) for x in pen_linvel], [float(x) for x in pen_angvel])
+         self.q_prev = self.q()
+         self.min_dist = float('inf')
++        self.max_jex = -float('inf')
+ 
+     def physics_step(self, target_ig):
+         q = self.q()
+         tau = P_GAIN * (target_ig - q) - D_GAIN * (q - self.q_prev) / self.dt
+         tau = np.clip(tau, -TORQUE_LIMIT, TORQUE_LIMIT)
+-        self.hand.set_external_forces_on_dofs(self.dof_idx, tau[self.sdx_from_ig].astype(REAL))
+         self.q_prev = q
+-        self.scene.step(self.dt)
+-        for c in self.pen.get_contact_points_world():
+-            self.min_dist = min(self.min_dist, float(c.distance))
++        for _ in range(SUBSTEPS):
++            self.hand.set_external_forces_on_dofs(self.dof_idx, tau[self.sdx_from_ig].astype(REAL))
++            self.scene.step(self.dt / SUBSTEPS)
++            for c in self.pen.get_contact_points_world():
++                self.min_dist = min(self.min_dist, float(c.distance))
++            qs = self.q()
++            self.max_jex = max(self.max_jex, float(np.max(qs - np.asarray(IG_UPPER))), float(np.max(np.asarray(IG_LOWER) - qs)))
+         return tau
+ 
+     def control_step(self, target_ig):
+--- compliance/tools/closed_loop.py
++++ admissible/tools/closed_loop.py
+@@ -14,7 +14,7 @@
+ import numpy as np
+ 
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+-from sdx_env import PenSpinSDX, IG_LOWER, IG_UPPER, CONTACT_THRESH, CONTACT_OVERRIDE  # noqa: E402
++from sdx_env import PenSpinSDX, IG_LOWER, IG_UPPER, CONTACT_THRESH, CONTACT_OVERRIDE, JOINT_OVERRIDE, SUBSTEPS  # noqa: E402
+ from teacher_np import TeacherNP, TeacherObs, ACTION_SCALE, CONTROL_DT, FINGERTIPS  # noqa: E402
+ 
+ URDF = str(Path(__file__).resolve().parent.parent / 'assets/allegro/allegro_superdex.urdf')
+@@ -79,7 +79,7 @@
+         L = int(r['lengths'][e]); ig_vz = r['rot_rad'][e, :L] / CONTROL_DT
+         eps.append({'episode': e, 'sdx_steps': steps, 'sdx_rot_reward': rot_reward, 'sdx_rot_rad': rot_rad,
+                     'ig_steps': L, 'ig_rot_reward': float(np.clip(ig_vz, -0.5, 0.5).sum()), 'ig_rot_rad': float(r['rot_rad'][e, :L].sum()),
+-                    'min_contact_dist': env.min_dist, 'max_joint_excess': jex, 'contact_on': on, 'contact_steps': ns})
++                    'min_contact_dist': env.min_dist, 'max_joint_excess': max(jex, env.max_jex), 'contact_on': on, 'contact_steps': ns})
+         print(json.dumps(eps[-1]), flush=True)
+     m = lambda k: float(np.mean([x[k] for x in eps]))
+     summary = {'record': str(record), 'episodes': n, 'options': {'inertia': inertia, 'friction': fr, **opt}, 'wall_s': round(time.time() - t0, 1),
+@@ -90,6 +90,7 @@
+                'finite': bool(np.all(np.isfinite([x['sdx_rot_reward'] for x in eps]))),
+                'contact_on_rate': float(sum(x['contact_on'] for x in eps) / max(1, 31 * sum(x['contact_steps'] for x in eps))),
+                'sdx_contact': dict(CONTACT_OVERRIDE),
++               'sdx_joint': dict(JOINT_OVERRIDE), 'sdx_substeps': SUBSTEPS,
+                'sdx_full_episodes': int(sum(x['sdx_steps'] >= T for x in eps)), 'ig_full_episodes': int(sum(x['ig_steps'] >= T - 1 for x in eps)),
+                'sdx_rot_rad_mean': m('sdx_rot_rad'), 'ig_rot_rad_mean': m('ig_rot_rad')}
+     Path(out_prefix + '.json').write_text(json.dumps({'summary': summary, 'episodes': eps}, indent=1))

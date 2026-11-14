@@ -1,0 +1,24 @@
+{
+  "superseded": "sdx_zero_shot here used the wrong pen length and termination length; see superdex_penlen_audit.json. ig_protocol is unaffected.",
+  "note": "Rotation reward, 3 eval seeds (42,43,44), 1 training seed per policy; std is across eval seeds, not training seeds. SDX inertia=mesh, noise_t=0.01, noise_e=0.02. SDX mu=1 teacher/proprio/btactile/falign from earlier runs, sweeps in superdex_mu_sweep.json.",
+  "jobs": {"trand": {"train": 778931, "eval": 778932, "record": 778933}, "tcalib": {"train": 778935, "eval": 778937, "record": 778938}},
+  "ig_protocol": {
+    "trand": {"rot": [23.79, 29.25, 24.07], "rot_mean": 25.7, "rot_std": 3.1, "duration_s": [3.33, 4.17, 3.50], "duration_mean_s": 3.67, "final_loss_l1_sum": 2.273},
+    "tcalib": {"rot": [29.44, 32.90, 30.06], "rot_mean": 31.4, "rot_std": 2.0, "duration_s": [4.04, 4.57, 4.08], "duration_mean_s": 4.23, "final_loss_l1_sum": 2.183},
+    "falign": {"rot_mean": 24.9, "rot_std": 2.4, "duration_mean_s": 3.64, "final_loss_l1_sum": 2.355},
+    "btactile": {"rot_mean": 44.0, "rot_std": 4.5, "duration_mean_s": 5.22, "final_loss_l1_sum": 1.966}
+  },
+  "sdx_zero_shot": {
+    "teacher": {"0.5": [63.2, 5.9, 7.13], "1.0": [37.5, 1.6, 4.79], "1.5": [31.7, 3.6, 4.21]},
+    "proprio": {"0.5": [10.0, 0.8, 1.74], "1.0": [12.8, 0.8, 2.19], "1.5": [13.9, 0.8, 2.35]},
+    "btactile": {"0.5": [12.9, 1.3, 1.94], "1.0": [16.4, 1.1, 2.54], "1.5": [16.7, 1.1, 2.67]},
+    "falign": {"0.5": [14.7, 0.8, 2.18], "1.0": [14.7, 1.8, 2.44], "1.5": [14.4, 0.4, 2.46]},
+    "trand": {"0.5": [14.5, 1.3, 2.13], "1.0": [15.8, 1.2, 2.50], "1.5": [16.9, 2.1, 2.77]},
+    "tcalib": {"0.5": [13.0, 0.7, 1.98], "1.0": [16.0, 0.7, 2.49], "1.5": [17.3, 0.8, 2.73]}
+  },
+  "sdx_zero_shot_columns": ["rot_mean", "rot_std", "duration_mean_s"],
+  "record_caveat": {
+    "issue": "Records 778933 and 778938 were made without RECORD_POLICY=student, so they hold teacher rollouts. ig_rot_reward_mean in zs_mu*_trand/tcalib JSONs is teacher data and must not be used; IG student numbers come from the protocol evals 778932/778937.",
+    "check": "closed_loop takes only initial state from the record. Rerun at mu=1 from the student record evalFA: tcalib s42 64/64 episodes identical; trand s43, s44 and tcalib s43, s44 means identical to 3 decimals, with 0-1 of 64 episodes differing (episodes with IG length <=1 take init_q instead of in_obs[e,1]). trand s42 not rerun."
+  }
+}

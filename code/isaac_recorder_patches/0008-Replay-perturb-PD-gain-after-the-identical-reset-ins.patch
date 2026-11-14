@@ -1,0 +1,42 @@
+From 7acf0225a5555cff595451ab7a7b40d2289821ac Mon Sep 17 00:00:00 2001
+From: shuaizhou
+Date: Thu, 29 Oct 2026 03:52:47 +0800
+Subject: [PATCH 08/14] Replay: perturb PD gain after the identical reset
+ instead of via config
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ record_replay.py | 17 +++++++----------
+ 1 file changed, 7 insertions(+), 10 deletions(-)
+
+diff --git a/record_replay.py b/record_replay.py
+index 93bd716..c802151 100644
+--- a/record_replay.py
++++ b/record_replay.py
+@@ -36,16 +36,13 @@ def run(agent):
+     replay = os.environ.get('REPLAY_FROM')
+     if replay:
+         src = np.load(replay)
+-        # Sizes and masses must match exactly; the post-warmup state may move by REPLAY_STATE_TOL when the replay
+-        # deliberately perturbs the dynamics (the warmup step is already simulated with the perturbation).
+-        tol = float(os.environ.get('REPLAY_STATE_TOL', '1e-6'))
+-        for k, atol in (('obj_scale', 1e-6), ('obj_mass', 1e-6), ('init_q', tol), ('init_obj', tol)):
+-            a, b = src[k], out[k].cpu().numpy()
+-            if k == 'init_obj' and tol > 1e-6:
+-                a, b = a[:, :7], b[:, :7]  # poses only: a few warmup-terminated envs restart with large velocities
+-            diff = float(np.abs(a - b).max())
+-            assert diff <= atol, ('replay initial state differs', k, diff)
+-            print('REPLAY_INIT_DIFF', k, diff, flush=True)
++        for k in ('obj_scale', 'obj_mass', 'init_q', 'init_obj'):
++            diff = float(np.abs(src[k] - out[k].cpu().numpy()).max())
++            assert diff <= 1e-6, ('replay initial state differs', k, diff)
++        # Optional dynamics perturbation applied after the identical reset: scales the torque PD p-gain.
++        pscale = float(os.environ.get('REPLAY_PGAIN_SCALE', '1'))
++        env.p_gain *= pscale
++        print('REPLAY_FROM', replay, 'pgain_scale', pscale, 'p_gain_mean', float(env.p_gain.mean()), flush=True)
+         src_target = torch.from_numpy(src['target']).to(agent.device)
+     rec = {k: [] for k in ('target', 'q', 'obj_pose', 'contact_norm', 'done', 'rot_rad')}
+     alive = torch.ones(n, dtype=torch.bool, device=agent.device)
+-- 
+2.43.0
+

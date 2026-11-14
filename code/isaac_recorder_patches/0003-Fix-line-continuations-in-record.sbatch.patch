@@ -1,0 +1,26 @@
+From d772fd907c119e7b8c1519ba13141e5eb042abac Mon Sep 17 00:00:00 2001
+From: shuaizhou
+Date: Thu, 29 Oct 2026 03:20:54 +0800
+Subject: [PATCH 03/14] Fix line continuations in record.sbatch
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ record.sbatch | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/record.sbatch b/record.sbatch
+index d1a4b2d..dcf9baf 100644
+--- a/record.sbatch
++++ b/record.sbatch
+@@ -42,4 +42,7 @@ python train.py task=AllegroHandHora headless=True seed="$SEED" test=True \
+   task.env.privInfo.enable_obj_angvel=True task.env.privInfo.enable_tactile=True \
+   task.env.randomization.randomizeScaleList=[0.29] task.env.grasp_cache_name=allegro_round_tip_thin \
+   task.env.hora.point_cloud_sampled_dim=100 task.env.initPoseMode=low task.env.reset_height_threshold=0.605 \
+-  task.env.reward.angvelClipMax=0.5 task.env.enable_obj_ends=True wandb_activate=False \n  task.env.randomization.action_noise_e_scale=0 task.env.randomization.action_noise_t_scale=0 \n  task.env.randomization.randomizePDGains=False task.env.randomization.randomizeCOM=False \n  task.env.randomization.randomizeFriction=${RANDOMIZE_FRICTION:-False}
++  task.env.reward.angvelClipMax=0.5 task.env.enable_obj_ends=True wandb_activate=False \
++  task.env.randomization.action_noise_e_scale=0 task.env.randomization.action_noise_t_scale=0 \
++  task.env.randomization.randomizePDGains=False task.env.randomization.randomizeCOM=False \
++  task.env.randomization.randomizeFriction=${RANDOMIZE_FRICTION:-False}
+-- 
+2.43.0
+

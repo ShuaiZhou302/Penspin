@@ -1,0 +1,14 @@
+{
+  "note": "f v5 students (f trained with extra f-student pairs, seeds 109/110), training seeds 0,1,2. Repo penspin-student-fv5-20261106 d81ba4d, f model f_v5_tps_b100_s0. Train 803318/803320/803322, IG eval 803319/803321/803323 (seeds 42-44 x 64), all COMPLETED. SDX zero-shot penlen=ig, initial states from evalFB records 783809, 27/27 JSON, .err empty; step10_auto.DONE 2026-11-07 01:56 CST. per_seed = [rot_reward, duration_s], each the mean of 3 eval seeds; mean/sd over training seeds (ddof=1). ge_pi/ge_2pi counted over all 576 episodes.",
+  "ig": {"per_seed": [[23.92, 3.46], [26.26, 3.73], [23.89, 3.31]], "mean": 24.69, "sd": 1.36, "duration_s": 3.5},
+  "sdx": {
+    "mu0.5": {"per_seed": [[12.48, 1.89], [13.26, 1.98], [14.44, 2.13]], "mean": 13.39, "sd": 0.98, "duration_s": 2.0, "ge_pi": 8, "ge_2pi": 0, "N": 576},
+    "mu1.0": {"per_seed": [[14.88, 2.38], [14.86, 2.26], [16.25, 2.38]], "mean": 15.33, "sd": 0.8, "duration_s": 2.34, "ge_pi": 16, "ge_2pi": 0, "N": 576},
+    "mu1.5": {"per_seed": [[15.54, 2.7], [14.72, 2.42], [15.9, 2.44]], "mean": 15.39, "sd": 0.61, "duration_s": 2.52, "ge_pi": 5, "ge_2pi": 0, "N": 576}
+  },
+  "rule_mu1": {
+    "vs_fv4": {"control": [15.93, 1.61], "d": -0.60, "SE": 1.04, "two_SE": 2.08, "reading": "not separable"},
+    "vs_cv4": {"control": [17.07, 0.85], "d": -1.74, "SE": 0.67, "two_SE": 1.35, "reading": "f v5 below calib by more than 2 SE"}
+  },
+  "conclusion": "Raising f F1 on f-student states (0.721 -> 0.755) did not raise SuperDex reward. f v5 is not separable from f v4 at mu=1 and is below the calibration student by more than 2 SE. IG drops slightly (24.7 vs 25.7) and the IG-to-SDX loss is 9.4 vs 9.7 for f v4, so the f student's loss is not explained by f error on its own states at this accuracy level."
+}

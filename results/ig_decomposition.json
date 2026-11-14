@@ -1,0 +1,116 @@
+{
+ "note": "IG decomposition (2026-11-06). B+tactile students 758850/772991/772994 evaluated in IG (repo penspin-student-penlen-20261031 1923a67, eval seeds 42-44 x64) with the student tactile channel raw / f_v4_tps_b100_s0 / calib_v4. Jobs: raw 802604/802610/802613, f 802606/802611/802614, calib 802608/802612/802615. Mean over 3 eval seeds per training seed; summary mean, sd (ddof=1) over training seeds, duration s. s = (raw - arm)/(raw - SDX 15.70). Raw reproduces original evals 758851/772992/772995 exactly. Design and rules fixed beforehand in courseproject/DECOMPOSITION_DESIGN_20261105.md.",
+ "reference": {
+  "f_student_ig": [
+   25.65,
+   0.47,
+   3.65
+  ],
+  "f_student_sdx_mu1": [
+   15.93,
+   1.61,
+   2.54
+  ],
+  "btactile_sdx_mu1": [
+   15.7,
+   2.03,
+   2.46
+  ]
+ },
+ "per_seed": {
+  "758850": {
+   "orig_per_eval": [
+    41.375,
+    47.343,
+    42.905
+   ],
+   "raw_per_eval": [
+    41.375,
+    47.343,
+    42.905
+   ],
+   "raw_equals_orig_max_abs": 0.0,
+   "raw": [
+    43.87,
+    5.56
+   ],
+   "f": [
+    18.28,
+    2.87
+   ],
+   "calib": [
+    29.43,
+    4.13
+   ]
+  },
+  "772991": {
+   "orig_per_eval": [
+    40.485,
+    47.374,
+    45.386
+   ],
+   "raw_per_eval": [
+    40.485,
+    47.374,
+    45.386
+   ],
+   "raw_equals_orig_max_abs": 0.0,
+   "raw": [
+    44.42,
+    5.63
+   ],
+   "f": [
+    18.18,
+    2.76
+   ],
+   "calib": [
+    29.09,
+    3.89
+   ]
+  },
+  "772994": {
+   "orig_per_eval": [
+    40.605,
+    47.84,
+    32.482
+   ],
+   "raw_per_eval": [
+    40.605,
+    47.84,
+    32.482
+   ],
+   "raw_equals_orig_max_abs": 0.0,
+   "raw": [
+    40.31,
+    5.34
+   ],
+   "f": [
+    18.44,
+    2.83
+   ],
+   "calib": [
+    29.75,
+    4.15
+   ]
+  }
+ },
+ "summary": {
+  "raw": [
+   42.87,
+   2.23,
+   5.51
+  ],
+  "f": [
+   18.3,
+   0.13,
+   2.82
+  ],
+  "calib": [
+   29.42,
+   0.33,
+   4.06
+  ],
+  "s_f": 0.904,
+  "s_calib": 0.495
+ }
+}

@@ -1,0 +1,151 @@
+--- penlen/tools/sdx_env.py
++++ compliance/tools/sdx_env.py
+@@ -15,6 +15,20 @@
+ 
+ REAL = np.float64 if sdp.uses_double_precision() else np.float32  # dtype of Span[float] arguments
+ 
++import os
++# Compliance sweep (penspin-superdex-compliance-20261107): SDX_CONTACT="field=value,..." overrides SuperDex ContactParams
++# fields on every hand link and on the pen. Unset = SuperDex defaults, identical to penspin-superdex-penlen-20261031.
++CONTACT_OVERRIDE = {k: float(v) for k, v in (kv.split('=') for kv in os.environ.get('SDX_CONTACT', '').split(',') if kv)}
++
++
++def contact_params(friction):
++    cp = sdp.ContactParams(); cp.coulomb_friction_coefficient = friction
++    for k, v in CONTACT_OVERRIDE.items():
++        assert hasattr(cp, k) and not callable(getattr(cp, k)), k
++        setattr(cp, k, v)
++    return cp
++
++
+ IG_DT, CONTROL_INV, P_GAIN, D_GAIN, TORQUE_LIMIT = 0.005, 10, 3.0, 0.1, 0.7
+ JOINT_FRICTION, ARMATURE, CONTACT_THRESH = 0.01, 0.001, 0.05
+ # Isaac Gym calibrated limits, in IG DOF order (allegro_hand_hora._parse_hand_dof_props).
+@@ -70,7 +84,7 @@
+         self.friction = friction
+         for i in range(len(pf.links)):
+             pf.links[i].has_gravity = False
+-            cp = sdp.ContactParams(); cp.coulomb_friction_coefficient = friction
++            cp = contact_params(friction)
+             pf.links[i].contact = cp
+         joints = {pf.joints[i].name: pf.joints[i] for i in range(len(pf.joints))}
+         for name, lo, hi in zip(ig_dof_names, IG_LOWER, IG_UPPER):
+@@ -104,7 +118,7 @@
+         pen_length = 0.4 * pen_scale if pen_length is None else pen_length  # Isaac Gym assets: 0.40/0.44/0.48/0.52 x scale
+         v, f = cylinder_mesh(0.04 * pen_scale, pen_length)
+         shape = sdp.create_tri_mesh_shape(v.reshape(-1), f.reshape(-1))
+-        cp = sdp.ContactParams(); cp.coulomb_friction_coefficient = friction
++        cp = contact_params(friction)
+         # pen_inertia: body-frame 3x3 inertia [kg m^2]; None = computed from the mesh (physical solid cylinder).
+         extra = {}
+         if pen_inertia is not None:
+@@ -148,6 +162,7 @@
+         self.pen.set_root_transform(transform(pen_pos, pen_quat_xyzw))
+         self.pen.set_velocity([float(x) for x in pen_linvel], [float(x) for x in pen_angvel])
+         self.q_prev = self.q()
++        self.min_dist = float('inf')
+ 
+     def physics_step(self, target_ig):
+         q = self.q()
+@@ -156,6 +171,8 @@
+         self.hand.set_external_forces_on_dofs(self.dof_idx, tau[self.sdx_from_ig].astype(REAL))
+         self.q_prev = q
+         self.scene.step(self.dt)
++        for c in self.pen.get_contact_points_world():
++            self.min_dist = min(self.min_dist, float(c.distance))
+         return tau
+ 
+     def control_step(self, target_ig):
+--- penlen/tools/closed_loop.py
++++ compliance/tools/closed_loop.py
+@@ -14,11 +14,12 @@
+ import numpy as np
+ 
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+-from sdx_env import PenSpinSDX, IG_LOWER, IG_UPPER  # noqa: E402
++from sdx_env import PenSpinSDX, IG_LOWER, IG_UPPER, CONTACT_THRESH, CONTACT_OVERRIDE  # noqa: E402
+ from teacher_np import TeacherNP, TeacherObs, ACTION_SCALE, CONTROL_DT, FINGERTIPS  # noqa: E402
+ 
+ URDF = str(Path(__file__).resolve().parent.parent / 'assets/allegro/allegro_superdex.urdf')
+ RESET_Z, END_Z = 0.605, (0.56, 0.71)
++KEEP = [i for i in range(32) if i != 11]  # contact channels except the IG index -1 pen-total quirk
+ 
+ 
+ def main(record, teacher_npz, out_prefix, max_eps='all', **opt):
+@@ -55,6 +56,7 @@
+         obs, priv, pc = r['in_obs'][e, 0], r['in_priv'][e, 0], r['in_pc'][e, 0]
+         target = r['init_target'][e].astype(float)
+         prev_quat = o[3:7]; rot_reward = 0.0; rot_rad = 0.0; steps = T
++        jex = -np.inf; on = 0; ns = 0
+         for t in range(T):
+             if student is None:
+                 a = teacher.act(obs[None], priv[None], pc[None])[0]
+@@ -62,6 +64,8 @@
+                 a = student.act(obs, ob.proprio_hist, ob.tactile_hist)
+             target = np.clip(target + ACTION_SCALE * a, IG_LOWER, IG_UPPER)
+             cn = env.control_step(target)
++            qn = env.q(); jex = max(jex, float(np.max(qn - np.asarray(IG_UPPER))), float(np.max(np.asarray(IG_LOWER) - qn)))
++            on += int((np.asarray(cn)[KEEP] >= CONTACT_THRESH).sum()); ns += 1
+             pose = env.pen_pose()
+             ft = np.array([[env.links[k].get_root_transform().translation[i] for i in range(3)] for k in FINGERTIPS])
+             obs, priv, pc, angvel = ob.update(env.q(), target, cn, ft, pose[:3], pose[3:7], prev_quat)
+@@ -74,12 +78,18 @@
+         env.close()
+         L = int(r['lengths'][e]); ig_vz = r['rot_rad'][e, :L] / CONTROL_DT
+         eps.append({'episode': e, 'sdx_steps': steps, 'sdx_rot_reward': rot_reward, 'sdx_rot_rad': rot_rad,
+-                    'ig_steps': L, 'ig_rot_reward': float(np.clip(ig_vz, -0.5, 0.5).sum()), 'ig_rot_rad': float(r['rot_rad'][e, :L].sum())})
++                    'ig_steps': L, 'ig_rot_reward': float(np.clip(ig_vz, -0.5, 0.5).sum()), 'ig_rot_rad': float(r['rot_rad'][e, :L].sum()),
++                    'min_contact_dist': env.min_dist, 'max_joint_excess': jex, 'contact_on': on, 'contact_steps': ns})
+         print(json.dumps(eps[-1]), flush=True)
+     m = lambda k: float(np.mean([x[k] for x in eps]))
+     summary = {'record': str(record), 'episodes': n, 'options': {'inertia': inertia, 'friction': fr, **opt}, 'wall_s': round(time.time() - t0, 1),
+                'sdx_rot_reward_mean': m('sdx_rot_reward'), 'ig_rot_reward_mean': m('ig_rot_reward'),
+                'sdx_duration_s_mean': m('sdx_steps') * CONTROL_DT, 'ig_duration_s_mean': m('ig_steps') * CONTROL_DT,
++               'min_contact_dist': float(min(x['min_contact_dist'] for x in eps)),
++               'max_joint_excess': float(max(x['max_joint_excess'] for x in eps)),
++               'finite': bool(np.all(np.isfinite([x['sdx_rot_reward'] for x in eps]))),
++               'contact_on_rate': float(sum(x['contact_on'] for x in eps) / max(1, 31 * sum(x['contact_steps'] for x in eps))),
++               'sdx_contact': dict(CONTACT_OVERRIDE),
+                'sdx_full_episodes': int(sum(x['sdx_steps'] >= T for x in eps)), 'ig_full_episodes': int(sum(x['ig_steps'] >= T - 1 for x in eps)),
+                'sdx_rot_rad_mean': m('sdx_rot_rad'), 'ig_rot_rad_mean': m('ig_rot_rad')}
+     Path(out_prefix + '.json').write_text(json.dumps({'summary': summary, 'episodes': eps}, indent=1))
+--- penlen/tools/train_f.py
++++ compliance/tools/train_f_open.py
+@@ -1,4 +1,6 @@
+-"""Contact alignment model f: Isaac Gym contact history + joint state + action -> SuperDex binary contact (32).
++"""[E3 variant train_f_open.py: training labels from the OPEN-LOOP SDX replay (open_contact), optionally only rows with
++open_pen_pos_err < open_max metres; evaluation labels stay the resync labels, so F1 is comparable to train_f.py.]
++Contact alignment model f: Isaac Gym contact history + joint state + action -> SuperDex binary contact (32).
+ 
+ Data: runs/pairs_v2/dataset_mu1.npz (step-wise resync pairs, SuperDex mu=1.0). Budgets use the first N train-pool
+ episodes in dataset order; val = held-out teacher record (seed 102); shift = B+tactile student rollouts (seed 103).
+@@ -72,11 +74,12 @@
+     return taus
+ 
+ 
+-def main(ds_path, out_dir, budgets='10,25,50,100', seeds='0,1,2', steps='4000', extra='', evals='val,shift'):
++def main(ds_path, out_dir, budgets='10,25,50,100', seeds='0,1,2', steps='4000', extra='', evals='val,shift', open_max='inf'):
+     torch.set_num_threads(4)
+     d = dict(np.load(ds_path)); out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
+     split = d['split']; ep = d['episode']
+     y_all = d['resync_contact'] >= THRESH
++    y_open = d['open_contact'] >= THRESH; keep_open = d['open_pen_pos_err'] < float(open_max)
+     extra = [x for x in extra.split(',') if x]; evals = evals.split(',')
+     rows = {s: np.nonzero(split == s)[0] for s in ['train'] + extra + evals}
+     assert all(len(r) for r in rows.values()), {s: len(r) for s, r in rows.items()}
+@@ -85,12 +88,13 @@
+     Y = {s: y_all[rows[s]] for s in evals}
+     train_eps = list(dict.fromkeys(ep[rows['train']].tolist()))  # dataset order
+     results = {'dataset': str(ds_path), 'features': 'log1p(|F|/0.05) x3 steps, q_t, q_{t-1}, target_t, action_t',
+-               'steps': int(steps), 'extra': extra, 'extra_steps': int(len(extra_rows)), 'evals': evals, 'budgets': {}}
++               'steps': int(steps), 'labels': 'open_contact', 'open_max': float(open_max), 'extra': extra, 'extra_steps': int(len(extra_rows)), 'evals': evals, 'budgets': {}}
+     for s in evals:
+         results[f'identity_{s}'] = f1_scores(d['ig_contact'][rows[s]] >= THRESH, Y[s])
+     for B in [int(b) for b in budgets.split(',')]:
+         sel = np.concatenate([rows['train'][np.isin(ep[rows['train']], train_eps[:B])], extra_rows])
+-        xtr, ytr = features(d, sel), y_all[sel]
++        sel = sel[keep_open[sel]]
++        xtr, ytr = features(d, sel), y_open[sel]
+         taus = fit_thresholds(d['ig_contact'][sel], ytr)
+         rb = {'episodes': B, 'train_steps': int(len(sel)), 'tau': taus.round(4).tolist()}
+         for s in evals:

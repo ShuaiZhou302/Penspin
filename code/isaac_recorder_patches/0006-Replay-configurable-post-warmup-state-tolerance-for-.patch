@@ -1,0 +1,34 @@
+From 0b78e8503d076aa72f36aab33523218ad731133c Mon Sep 17 00:00:00 2001
+From: shuaizhou
+Date: Thu, 29 Oct 2026 03:33:00 +0800
+Subject: [PATCH 06/14] Replay: configurable post-warmup state tolerance for
+ perturbed replays
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ record_replay.py | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/record_replay.py b/record_replay.py
+index d3d872d..d0d555e 100644
+--- a/record_replay.py
++++ b/record_replay.py
+@@ -36,8 +36,13 @@ def run(agent):
+     replay = os.environ.get('REPLAY_FROM')
+     if replay:
+         src = np.load(replay)
+-        for k in ('init_q', 'init_obj', 'obj_scale', 'obj_mass'):
+-            assert np.allclose(src[k], out[k].cpu().numpy(), atol=1e-6), ('replay initial state differs', k)
++        # Sizes and masses must match exactly; the post-warmup state may move by REPLAY_STATE_TOL when the replay
++        # deliberately perturbs the dynamics (the warmup step is already simulated with the perturbation).
++        tol = float(os.environ.get('REPLAY_STATE_TOL', '1e-6'))
++        for k, atol in (('obj_scale', 1e-6), ('obj_mass', 1e-6), ('init_q', tol), ('init_obj', tol)):
++            diff = float(np.abs(src[k] - out[k].cpu().numpy()).max())
++            assert diff <= atol, ('replay initial state differs', k, diff)
++            print('REPLAY_INIT_DIFF', k, diff, flush=True)
+         src_target = torch.from_numpy(src['target']).to(agent.device)
+     rec = {k: [] for k in ('target', 'q', 'obj_pose', 'contact_norm', 'done', 'rot_rad')}
+     alive = torch.ones(n, dtype=torch.bool, device=agent.device)
+-- 
+2.43.0
+

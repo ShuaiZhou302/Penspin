@@ -1,0 +1,26 @@
+{
+  "note": "Fine-tuning baseline (vi). Base policy proprio 713476, 1 training seed. Rot reward at SDX with penlen=ig; mean over 3 fine-tune seeds x 3 eval seeds, std across fine-tune seed means. Not zero-shot; oracle runs closed loop with privileged SDX state, unlike PenSpin's open-loop replay.",
+  "open_loop_replay": {"attempts": 119, "mean_steps": 31, "ig_mean_steps": 305, "rot_rad_mean": 0.34, "ge_pi": 0, "ge_2pi": 0},
+  "oracle_closed_loop_pool": {"attempts": 119, "mean_steps": 134, "rot_rad_mean": 3.74, "rot_reward_mean": 52.8},
+  "base_proprio_mu1": {"rot": 11.7, "std": 0.9, "duration_s": 2.08, "ge_pi_of_192": 2, "ge_2pi_of_192": 0},
+  "filter_2pi": {
+    "columns": ["demos", "train_frames", "mu0.5_rot", "mu0.5_std", "mu1.0_rot", "mu1.0_std", "mu1.5_rot", "mu1.5_std", "mu1.0_duration_s"],
+    "10": [2, 800, 3.7, 0.8, 4.9, 1.3, 4.9, 1.6, 1.56],
+    "25": [5, 1757, 4.1, 0.8, 5.0, 0.4, 5.2, 0.4, 1.42],
+    "50": [11, 3370, 4.0, 0.2, 4.7, 0.2, 4.7, 1.1, 1.56],
+    "100": [22, 6818, 3.9, 0.9, 4.6, 0.5, 4.2, 1.0, 1.42]
+  },
+  "filter_pi_mu1": {
+    "columns": ["demos", "train_frames", "mu1.0_rot", "mu1.0_std", "mu1.0_duration_s"],
+    "10": [5, 1410, 7.0, 1.2, 2.02],
+    "25": [10, 2255, 6.6, 0.5, 1.77],
+    "50": [19, 4689, 6.6, 1.0, 1.90],
+    "100": [37, 9016, 6.8, 0.2, 1.90]
+  },
+  "post_hoc_budget100_2pi_mu1": {
+    "note": "Added after seeing the main result, for sensitivity only.",
+    "epoch400_lr1e-3": {"rot": 5.2, "std": 0.8, "duration_s": 1.61, "train_l1": 0.021, "val_l1": 0.079},
+    "epoch400_lr1e-4": {"rot": 7.6, "std": 0.7, "duration_s": 1.89, "train_l1": 0.028, "val_l1": 0.080}
+  },
+  "val_l1_budget100_2pi": {"start": 0.183, "epoch100": 0.085, "epoch3000": 0.097}
+}

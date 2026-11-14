@@ -1,0 +1,261 @@
+From 3f7183c3a73abf6ece454377caa24b9cb318d594 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 29 Oct 2026 08:03:34 +0800
+Subject: [PATCH 12/14] Recorder: store per-step joint and object velocities
+ for step-wise SuperDex resync
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ record_replay.py | 242 ++++++++++++++++++++++++-----------------------
+ 1 file changed, 123 insertions(+), 119 deletions(-)
+
+diff --git a/record_replay.py b/record_replay.py
+index 3e3b1d8..00c288c 100644
+--- a/record_replay.py
++++ b/record_replay.py
+@@ -1,119 +1,123 @@
+-"""Record closed-loop teacher rollouts in Isaac Gym for open-loop replay in SuperDex.
+-
+-One episode per env, starting from the state left by env.reset() (reset + its zero-action warmup step). Per control
+-step t the file stores the clamped joint target used during that step, and the true joint positions, object pose and
+-raw |net contact force| of the 32 tactile channels after it. Steps from the first done onward are invalid (Isaac Gym
+-resets inside post_physics_step); lengths[e] counts the valid steps of env e.
+-Requires deterministic dynamics inputs: no random object forces, no action noise, no PD-gain or COM randomization.
+-REPLAY_FROM=<record.npz>: open-loop self-replay control. Same seed gives the same object sizes/masses and initial
+-grasps (asserted); the recorded targets are fed back through the action interface instead of the teacher.
+-"""
+-import json
+-import os
+-import numpy as np
+-import torch
+-
+-IG_DOF_NAMES = [f'joint_{i}.0' for i in (0, 1, 2, 3, 12, 13, 14, 15, 4, 5, 6, 7, 8, 9, 10, 11)]
+-
+-
+-def run(agent):
+-    env, n, T = agent.env, agent.env.num_envs, agent.env.max_episode_length
+-    names = list(env.gym.get_actor_dof_names(env.envs[0], env.hand_actors[0]))
+-    assert names == IG_DOF_NAMES, names
+-    sidx = [int(i) for i in env.sensor_handle_indices]
+-    assert env.contact_sensor_names[11] == 'link_13.0_fsr' and sidx[11] == -1 and min(sidx[:11] + sidx[12:]) >= 0, sidx
+-    assert env.contact_forces.shape[1] == env.num_allegro_hand_bodies + 1  # index -1 is the object
+-    assert env.force_scale == 0 and env.random_action_noise_e_scale == 0 and env.random_action_noise_t_scale == 0
+-    assert not env.randomize_pd_gains and not env.randomize_com and env.torque_control
+-    agent.set_eval()
+-    obs = env.reset()
+-    pd = env.priv_info_dict
+-    priv = env.priv_info_buf
+-    out = {'init_q': env.allegro_hand_dof_pos.clone(), 'init_qd': env.allegro_hand_dof_vel.clone(),
+-           'init_obj': env.root_state_tensor[env.object_indices, :13].clone(), 'init_target': env.cur_targets.clone(),
+-           'obj_scale': priv[:, pd['obj_scale'][0]].clone(), 'obj_mass': priv[:, pd['obj_mass'][0]].clone(),
+-           'obj_friction': priv[:, pd['obj_friction'][0]].clone(), 'obj_restitution': priv[:, pd['obj_restitution'][0]].clone()}
+-    replay = os.environ.get('REPLAY_FROM')
+-    if replay:
+-        src = np.load(replay)
+-        for k in ('obj_scale', 'obj_mass', 'init_q', 'init_obj'):
+-            diff = float(np.abs(src[k] - out[k].cpu().numpy()).max())
+-            assert diff <= 1e-6, ('replay initial state differs', k, diff)
+-        # Optional dynamics perturbation applied after the identical reset: scales the torque PD p-gain.
+-        pscale = float(os.environ.get('REPLAY_PGAIN_SCALE', '1'))
+-        env.p_gain *= pscale
+-        print('REPLAY_FROM', replay, 'pgain_scale', pscale, 'p_gain_mean', float(env.p_gain.mean()), flush=True)
+-        src_target = torch.from_numpy(src['target']).to(agent.device)
+-    # Actual object rigid-body properties after scale/mass randomization (inertia in the body frame).
+-    props = [env.gym.get_actor_rigid_body_properties(e, env.gym.find_actor_handle(e, 'object'))[0] for e in env.envs]
+-    out['obj_inertia'] = torch.tensor([[[p.inertia.x.x, p.inertia.x.y, p.inertia.x.z], [p.inertia.y.x, p.inertia.y.y, p.inertia.y.z],
+-                                        [p.inertia.z.x, p.inertia.z.y, p.inertia.z.z]] for p in props])
+-    out['obj_com'] = torch.tensor([[p.com.x, p.com.y, p.com.z] for p in props])
+-    out['obj_mass_prop'] = torch.tensor([p.mass for p in props])
+-    print('OBJ_PROPS', json.dumps({'inertia_diag_env0': [float(out['obj_inertia'][0, i, i]) for i in range(3)],
+-                                   'mass_env0': float(out['obj_mass_prop'][0]), 'scale_env0': float(out['obj_scale'][0])}), flush=True)
+-    rec = {k: [] for k in ('target', 'q', 'obj_pose', 'contact_norm', 'done', 'rot_rad',
+-                           'in_obs', 'in_priv', 'in_pc', 'action', 'ft_pos')}
+-    out['obj_point_cloud_local'] = env.obj_point_clouds.clone()
+-    # RECORD_POLICY=student: the student checkpoint (train.load_path, train.ppo.input_mode) acts, with the same inputs as
+-    # protocol_student_diagnostic; its raw history inputs are recorded for porting checks.
+-    policy = os.environ.get('RECORD_POLICY', 'teacher')
+-    assert policy in ('teacher', 'student'), policy
+-    if policy == 'student':
+-        rec['in_proprio'], rec['in_tactile'] = [], []
+-    alive = torch.ones(n, dtype=torch.bool, device=agent.device)
+-    lengths = torch.full((n,), T, dtype=torch.long, device=agent.device)
+-    for t in range(T):
+-        with torch.no_grad():
+-            pc = obs['point_cloud_info']
+-            if agent.normalize_point_cloud:
+-                pc = agent.point_cloud_mean_std_demon(pc.reshape(-1, 3)).reshape(n, -1, 3)
+-            teacher_in = {'obs': agent.running_mean_std_demon(obs['obs']),
+-                          'priv_info': agent.priv_mean_std_demon(obs['priv_info']) if agent.normalize_priv else obs['priv_info'],
+-                          'point_cloud_info': pc,
+-                          'proprio_hist': obs['proprio_hist'][..., -agent.proprio_len:, :agent.proprio_dim]}
+-            action = agent.demon_model.act_inference(teacher_in)[0].clamp(-1, 1)
+-            if policy == 'student':
+-                hist = obs['proprio_hist'][..., -agent.proprio_len:, :agent.proprio_dim]
+-                student_in = {'obs': agent.running_mean_std(obs['obs']), 'proprio_hist': hist}
+-                if agent.input_mode != 'proprio':
+-                    student_in['obj_ends'] = obs['obj_ends']
+-                if 'tactile' in agent.input_mode:
+-                    student_in['tactile_hist'] = obs['tactile_hist']
+-                action = agent.model.act_inference(student_in)[0].clamp(-1, 1)
+-                rec['in_proprio'].append(hist.clone()); rec['in_tactile'].append(obs['tactile_hist'].clone())
+-            # raw (unnormalized) teacher inputs at step t and the teacher action, for porting checks
+-            rec['in_obs'].append(obs['obs'].clone()); rec['in_priv'].append(obs['priv_info'].clone())
+-            rec['in_pc'].append(obs['point_cloud_info'].clone()); rec['action'].append(action.clone())
+-            if replay:
+-                action = ((src_target[:, t] - env.prev_targets) / env.action_scale).clamp(-1, 1)
+-            obs, _, done, _ = env.step(action)
+-        rec['target'].append(env.cur_targets.clone())
+-        rec['q'].append(env.allegro_hand_dof_pos.clone())
+-        rec['obj_pose'].append(torch.cat((env.object_pos, env.object_rot), -1).clone())
+-        rec['contact_norm'].append(env.contact_forces[:, env.sensor_handle_indices, :].norm(dim=-1).clone())
+-        rec['rot_rad'].append(env.last_step_axis_rotation_rad.clone())
+-        rec['ft_pos'].append(env.fingertip_pos.clone())
+-        d = done.bool()
+-        rec['done'].append(d.clone())
+-        newly = alive & d
+-        lengths[newly] = t
+-        alive &= ~d
+-    arrays = {k: torch.stack(v, 1).cpu().numpy() for k, v in rec.items()}
+-    arrays.update({k: v.cpu().numpy() for k, v in out.items()})
+-    arrays['lengths'] = lengths.cpu().numpy()
+-    arrays['sensor_names'] = np.array(env.contact_sensor_names)
+-    arrays['dof_names'] = np.array(names)
+-    label = os.environ['RECORD_LABEL']
+-    path = os.path.join('runs', f'record_{label}.npz')
+-    np.savez_compressed(path, **arrays)
+-    rotr = arrays['rot_rad'] / 0.05
+-    valid = np.arange(T)[None, :] < arrays['lengths'][:, None]
+-    summary = {'label': label, 'policy': policy, 'input_mode': agent.input_mode, 'envs': n, 'T': T,
+-               'mean_valid_steps': float(lengths.float().mean()),
+-               'rot_reward_mean': float((np.clip(rotr, -0.5, 0.5) * valid).sum(1).mean()),
+-               'full_episodes': int((lengths == T).sum()), 'contact_on_fraction': float((arrays['contact_norm'] >= 0.05).mean()),
+-               'scale_range': [float(out['obj_scale'].min()), float(out['obj_scale'].max())],
+-               'mass_range': [float(out['obj_mass'].min()), float(out['obj_mass'].max())],
+-               'friction_unique': sorted(set(round(float(x), 4) for x in out['obj_friction']))[:5]}
+-    print('RECORD_SUMMARY', json.dumps(summary), flush=True)
++"""Record closed-loop teacher rollouts in Isaac Gym for open-loop replay in SuperDex.
++
++One episode per env, starting from the state left by env.reset() (reset + its zero-action warmup step). Per control
++step t the file stores the clamped joint target used during that step, and the true joint positions, object pose and
++raw |net contact force| of the 32 tactile channels after it. Steps from the first done onward are invalid (Isaac Gym
++resets inside post_physics_step); lengths[e] counts the valid steps of env e.
++The full simulator state after each step (q, qd, object pose and world velocities) is stored so SuperDex can be
++re-synchronized to it step by step (paired contact collection).
++Requires deterministic dynamics inputs: no random object forces, no action noise, no PD-gain or COM randomization.
++REPLAY_FROM=<record.npz>: open-loop self-replay control. Same seed gives the same object sizes/masses and initial
++grasps (asserted); the recorded targets are fed back through the action interface instead of the teacher.
++"""
++import json
++import os
++import numpy as np
++import torch
++
++IG_DOF_NAMES = [f'joint_{i}.0' for i in (0, 1, 2, 3, 12, 13, 14, 15, 4, 5, 6, 7, 8, 9, 10, 11)]
++
++
++def run(agent):
++    env, n, T = agent.env, agent.env.num_envs, agent.env.max_episode_length
++    names = list(env.gym.get_actor_dof_names(env.envs[0], env.hand_actors[0]))
++    assert names == IG_DOF_NAMES, names
++    sidx = [int(i) for i in env.sensor_handle_indices]
++    assert env.contact_sensor_names[11] == 'link_13.0_fsr' and sidx[11] == -1 and min(sidx[:11] + sidx[12:]) >= 0, sidx
++    assert env.contact_forces.shape[1] == env.num_allegro_hand_bodies + 1  # index -1 is the object
++    assert env.force_scale == 0 and env.random_action_noise_e_scale == 0 and env.random_action_noise_t_scale == 0
++    assert not env.randomize_pd_gains and not env.randomize_com and env.torque_control
++    agent.set_eval()
++    obs = env.reset()
++    pd = env.priv_info_dict
++    priv = env.priv_info_buf
++    out = {'init_q': env.allegro_hand_dof_pos.clone(), 'init_qd': env.allegro_hand_dof_vel.clone(),
++           'init_obj': env.root_state_tensor[env.object_indices, :13].clone(), 'init_target': env.cur_targets.clone(),
++           'obj_scale': priv[:, pd['obj_scale'][0]].clone(), 'obj_mass': priv[:, pd['obj_mass'][0]].clone(),
++           'obj_friction': priv[:, pd['obj_friction'][0]].clone(), 'obj_restitution': priv[:, pd['obj_restitution'][0]].clone()}
++    replay = os.environ.get('REPLAY_FROM')
++    if replay:
++        src = np.load(replay)
++        for k in ('obj_scale', 'obj_mass', 'init_q', 'init_obj'):
++            diff = float(np.abs(src[k] - out[k].cpu().numpy()).max())
++            assert diff <= 1e-6, ('replay initial state differs', k, diff)
++        # Optional dynamics perturbation applied after the identical reset: scales the torque PD p-gain.
++        pscale = float(os.environ.get('REPLAY_PGAIN_SCALE', '1'))
++        env.p_gain *= pscale
++        print('REPLAY_FROM', replay, 'pgain_scale', pscale, 'p_gain_mean', float(env.p_gain.mean()), flush=True)
++        src_target = torch.from_numpy(src['target']).to(agent.device)
++    # Actual object rigid-body properties after scale/mass randomization (inertia in the body frame).
++    props = [env.gym.get_actor_rigid_body_properties(e, env.gym.find_actor_handle(e, 'object'))[0] for e in env.envs]
++    out['obj_inertia'] = torch.tensor([[[p.inertia.x.x, p.inertia.x.y, p.inertia.x.z], [p.inertia.y.x, p.inertia.y.y, p.inertia.y.z],
++                                        [p.inertia.z.x, p.inertia.z.y, p.inertia.z.z]] for p in props])
++    out['obj_com'] = torch.tensor([[p.com.x, p.com.y, p.com.z] for p in props])
++    out['obj_mass_prop'] = torch.tensor([p.mass for p in props])
++    print('OBJ_PROPS', json.dumps({'inertia_diag_env0': [float(out['obj_inertia'][0, i, i]) for i in range(3)],
++                                   'mass_env0': float(out['obj_mass_prop'][0]), 'scale_env0': float(out['obj_scale'][0])}), flush=True)
++    rec = {k: [] for k in ('target', 'q', 'qd', 'obj_pose', 'obj_vel', 'contact_norm', 'done', 'rot_rad',
++                           'in_obs', 'in_priv', 'in_pc', 'action', 'ft_pos')}
++    out['obj_point_cloud_local'] = env.obj_point_clouds.clone()
++    # RECORD_POLICY=student: the student checkpoint (train.load_path, train.ppo.input_mode) acts, with the same inputs as
++    # protocol_student_diagnostic; its raw history inputs are recorded for porting checks.
++    policy = os.environ.get('RECORD_POLICY', 'teacher')
++    assert policy in ('teacher', 'student'), policy
++    if policy == 'student':
++        rec['in_proprio'], rec['in_tactile'] = [], []
++    alive = torch.ones(n, dtype=torch.bool, device=agent.device)
++    lengths = torch.full((n,), T, dtype=torch.long, device=agent.device)
++    for t in range(T):
++        with torch.no_grad():
++            pc = obs['point_cloud_info']
++            if agent.normalize_point_cloud:
++                pc = agent.point_cloud_mean_std_demon(pc.reshape(-1, 3)).reshape(n, -1, 3)
++            teacher_in = {'obs': agent.running_mean_std_demon(obs['obs']),
++                          'priv_info': agent.priv_mean_std_demon(obs['priv_info']) if agent.normalize_priv else obs['priv_info'],
++                          'point_cloud_info': pc,
++                          'proprio_hist': obs['proprio_hist'][..., -agent.proprio_len:, :agent.proprio_dim]}
++            action = agent.demon_model.act_inference(teacher_in)[0].clamp(-1, 1)
++            if policy == 'student':
++                hist = obs['proprio_hist'][..., -agent.proprio_len:, :agent.proprio_dim]
++                student_in = {'obs': agent.running_mean_std(obs['obs']), 'proprio_hist': hist}
++                if agent.input_mode != 'proprio':
++                    student_in['obj_ends'] = obs['obj_ends']
++                if 'tactile' in agent.input_mode:
++                    student_in['tactile_hist'] = obs['tactile_hist']
++                action = agent.model.act_inference(student_in)[0].clamp(-1, 1)
++                rec['in_proprio'].append(hist.clone()); rec['in_tactile'].append(obs['tactile_hist'].clone())
++            # raw (unnormalized) teacher inputs at step t and the teacher action, for porting checks
++            rec['in_obs'].append(obs['obs'].clone()); rec['in_priv'].append(obs['priv_info'].clone())
++            rec['in_pc'].append(obs['point_cloud_info'].clone()); rec['action'].append(action.clone())
++            if replay:
++                action = ((src_target[:, t] - env.prev_targets) / env.action_scale).clamp(-1, 1)
++            obs, _, done, _ = env.step(action)
++        rec['target'].append(env.cur_targets.clone())
++        rec['q'].append(env.allegro_hand_dof_pos.clone())
++        rec['qd'].append(env.allegro_hand_dof_vel.clone())
++        rec['obj_pose'].append(torch.cat((env.object_pos, env.object_rot), -1).clone())
++        rec['obj_vel'].append(env.root_state_tensor[env.object_indices, 7:13].clone())  # world linvel, angvel
++        rec['contact_norm'].append(env.contact_forces[:, env.sensor_handle_indices, :].norm(dim=-1).clone())
++        rec['rot_rad'].append(env.last_step_axis_rotation_rad.clone())
++        rec['ft_pos'].append(env.fingertip_pos.clone())
++        d = done.bool()
++        rec['done'].append(d.clone())
++        newly = alive & d
++        lengths[newly] = t
++        alive &= ~d
++    arrays = {k: torch.stack(v, 1).cpu().numpy() for k, v in rec.items()}
++    arrays.update({k: v.cpu().numpy() for k, v in out.items()})
++    arrays['lengths'] = lengths.cpu().numpy()
++    arrays['sensor_names'] = np.array(env.contact_sensor_names)
++    arrays['dof_names'] = np.array(names)
++    label = os.environ['RECORD_LABEL']
++    path = os.path.join('runs', f'record_{label}.npz')
++    np.savez_compressed(path, **arrays)
++    rotr = arrays['rot_rad'] / 0.05
++    valid = np.arange(T)[None, :] < arrays['lengths'][:, None]
++    summary = {'label': label, 'policy': policy, 'input_mode': agent.input_mode, 'envs': n, 'T': T,
++               'mean_valid_steps': float(lengths.float().mean()),
++               'rot_reward_mean': float((np.clip(rotr, -0.5, 0.5) * valid).sum(1).mean()),
++               'full_episodes': int((lengths == T).sum()), 'contact_on_fraction': float((arrays['contact_norm'] >= 0.05).mean()),
++               'scale_range': [float(out['obj_scale'].min()), float(out['obj_scale'].max())],
++               'mass_range': [float(out['obj_mass'].min()), float(out['obj_mass'].max())],
++               'friction_unique': sorted(set(round(float(x), 4) for x in out['obj_friction']))[:5]}
++    print('RECORD_SUMMARY', json.dumps(summary), flush=True)
+-- 
+2.43.0
+

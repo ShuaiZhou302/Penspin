@@ -1,0 +1,99 @@
+{
+  "labels": 9830400,
+  "arms": {
+    "proprio_priv_gt_774499": {
+      "rows": [
+        {
+          "eval_seed": 42,
+          "file": "penspin-student-objpose-dagger-20261022/runs/objpose_proprio_priv_gt_pilot774499_seed42_774500.json",
+          "sha256": "fc3b3b1e1245c3c8fe3f576bbdc9b434b91f928dd531bc807bf9fefb41ff1caf",
+          "rotation": 120.33047485351562,
+          "duration_s": 13.29296875,
+          "timeout": 35,
+          "custom": 35,
+          "ever180": 46,
+          "center_term": 24
+        },
+        {
+          "eval_seed": 43,
+          "file": "penspin-student-objpose-dagger-20261022/runs/objpose_proprio_priv_gt_pilot774499_seed43_774500.json",
+          "sha256": "ed39c534782375def5a0fd6d509660a20e5e89a71453a34970a706ca88f8d611",
+          "rotation": 139.13946533203125,
+          "duration_s": 15.353906631469727,
+          "timeout": 43,
+          "custom": 43,
+          "ever180": 53,
+          "center_term": 14
+        },
+        {
+          "eval_seed": 44,
+          "file": "penspin-student-objpose-dagger-20261022/runs/objpose_proprio_priv_gt_pilot774499_seed44_774500.json",
+          "sha256": "1af73f90d03797b2cf215d7d0238cca5b4d3cd817069ba3dd35f4c276e7d478f",
+          "rotation": 106.86505889892578,
+          "duration_s": 11.817188262939453,
+          "timeout": 31,
+          "custom": 31,
+          "ever180": 41,
+          "center_term": 28
+        }
+      ],
+      "rotation_mean": 122.11166636149089,
+      "rotation_eval_sample_std": 16.210762167257354,
+      "duration_s_mean": 13.48802121480306,
+      "timeout": 109,
+      "custom": 109,
+      "final_loss": 0.2855876892805099,
+      "final_train_episode_steps": 304.3125,
+      "commit": "e8a0db9",
+      "priv_dim": 61,
+      "points": 100
+    },
+    "teacher705613_same_protocol": {
+      "rows": [
+        {
+          "eval_seed": 42,
+          "file": "penspin-16831-protocol-audit-20261012/runs/ours_baseline_seed42_712736.json",
+          "sha256": "7ddc39db55ec51205150a08f514d695f7f1ef10c6627ce2f3d0b56099d2f9a5c",
+          "rotation": 116.54536437988281,
+          "duration_s": 12.977343559265137,
+          "timeout": 36,
+          "custom": 36,
+          "ever180": 43,
+          "center_term": 23
+        },
+        {
+          "eval_seed": 43,
+          "file": "penspin-16831-protocol-audit-20261012/runs/ours_baseline_seed43_712736.json",
+          "sha256": "915a5833b83f03b8bf96980d5a82bec817df9d058f97e54c8a1f55a92f535f29",
+          "rotation": 131.39520263671875,
+          "duration_s": 14.550000190734863,
+          "timeout": 40,
+          "custom": 40,
+          "ever180": 48,
+          "center_term": 19
+        },
+        {
+          "eval_seed": 44,
+          "file": "penspin-16831-protocol-audit-20261012/runs/ours_baseline_seed44_712736.json",
+          "sha256": "2dccee9e99abc4277a1693e9de4e2184840819612b59d06cec9732f3d62d925c",
+          "rotation": 122.66355895996094,
+          "duration_s": 13.568750381469727,
+          "timeout": 38,
+          "custom": 38,
+          "ever180": 45,
+          "center_term": 21
+        }
+      ],
+      "rotation_mean": 123.53470865885417,
+      "rotation_eval_sample_std": 7.463149496824941,
+      "duration_s_mean": 13.698698043823242,
+      "timeout": 114,
+      "custom": 114
+    }
+  },
+  "notes": [
+    "Upper-bound diagnostic student, not deployable: reads teacher priv_info (61: obj pos3, scale, mass, friction, com3, quat4, angvel3, fingertip pos12, restitution, priv tactile32) and 100-pt point cloud.",
+    "One training seed; +/- over 3 eval seeds x 64 episodes.",
+    "Custom full20+heading>=pi is not paper SR."
+  ]
+}

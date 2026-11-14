@@ -1,0 +1,60 @@
+From aba5425420f9cf6b535a556da2e85ca0dd587a57 Mon Sep 17 00:00:00 2001
+From: shuaizhou
+Date: Thu, 29 Oct 2026 06:25:39 +0800
+Subject: [PATCH 11/14] Recorder: student policy mode and student input
+ histories
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ record_replay.py | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
+
+diff --git a/record_replay.py b/record_replay.py
+index 8f06b7c..3e3b1d8 100644
+--- a/record_replay.py
++++ b/record_replay.py
+@@ -55,6 +55,12 @@ def run(agent):
+     rec = {k: [] for k in ('target', 'q', 'obj_pose', 'contact_norm', 'done', 'rot_rad',
+                            'in_obs', 'in_priv', 'in_pc', 'action', 'ft_pos')}
+     out['obj_point_cloud_local'] = env.obj_point_clouds.clone()
++    # RECORD_POLICY=student: the student checkpoint (train.load_path, train.ppo.input_mode) acts, with the same inputs as
++    # protocol_student_diagnostic; its raw history inputs are recorded for porting checks.
++    policy = os.environ.get('RECORD_POLICY', 'teacher')
++    assert policy in ('teacher', 'student'), policy
++    if policy == 'student':
++        rec['in_proprio'], rec['in_tactile'] = [], []
+     alive = torch.ones(n, dtype=torch.bool, device=agent.device)
+     lengths = torch.full((n,), T, dtype=torch.long, device=agent.device)
+     for t in range(T):
+@@ -67,6 +73,15 @@ def run(agent):
+                           'point_cloud_info': pc,
+                           'proprio_hist': obs['proprio_hist'][..., -agent.proprio_len:, :agent.proprio_dim]}
+             action = agent.demon_model.act_inference(teacher_in)[0].clamp(-1, 1)
++            if policy == 'student':
++                hist = obs['proprio_hist'][..., -agent.proprio_len:, :agent.proprio_dim]
++                student_in = {'obs': agent.running_mean_std(obs['obs']), 'proprio_hist': hist}
++                if agent.input_mode != 'proprio':
++                    student_in['obj_ends'] = obs['obj_ends']
++                if 'tactile' in agent.input_mode:
++                    student_in['tactile_hist'] = obs['tactile_hist']
++                action = agent.model.act_inference(student_in)[0].clamp(-1, 1)
++                rec['in_proprio'].append(hist.clone()); rec['in_tactile'].append(obs['tactile_hist'].clone())
+             # raw (unnormalized) teacher inputs at step t and the teacher action, for porting checks
+             rec['in_obs'].append(obs['obs'].clone()); rec['in_priv'].append(obs['priv_info'].clone())
+             rec['in_pc'].append(obs['point_cloud_info'].clone()); rec['action'].append(action.clone())
+@@ -92,7 +107,11 @@ def run(agent):
+     label = os.environ['RECORD_LABEL']
+     path = os.path.join('runs', f'record_{label}.npz')
+     np.savez_compressed(path, **arrays)
+-    summary = {'label': label, 'envs': n, 'T': T, 'mean_valid_steps': float(lengths.float().mean()),
++    rotr = arrays['rot_rad'] / 0.05
++    valid = np.arange(T)[None, :] < arrays['lengths'][:, None]
++    summary = {'label': label, 'policy': policy, 'input_mode': agent.input_mode, 'envs': n, 'T': T,
++               'mean_valid_steps': float(lengths.float().mean()),
++               'rot_reward_mean': float((np.clip(rotr, -0.5, 0.5) * valid).sum(1).mean()),
+                'full_episodes': int((lengths == T).sum()), 'contact_on_fraction': float((arrays['contact_norm'] >= 0.05).mean()),
+                'scale_range': [float(out['obj_scale'].min()), float(out['obj_scale'].max())],
+                'mass_range': [float(out['obj_mass'].min()), float(out['obj_mass'].max())],
+-- 
+2.43.0
+

@@ -1,0 +1,14 @@
+8a2c556 2026-10-29 Tactile-gap baselines (TACTILE_RAND / TACTILE_CALIB), same patch as tacbase repo
+dce4c06 2026-10-29 Contact-alignment tactile channel (TACTILE_ALIGN_F), same patch as falign repo 97c4472
+3f7183c 2026-10-29 Recorder: store per-step joint and object velocities for step-wise SuperDex resync
+aba5425 2026-10-29 Recorder: student policy mode and student input histories
+a4d0d7d 2026-10-29 Record raw teacher inputs/actions; export teacher; obs-noise knobs
+574dbb0 2026-10-29 Recorder: save actual object inertia, COM and mass
+7acf022 2026-10-29 Replay: perturb PD gain after the identical reset instead of via config
+d143584 2026-10-29 Replay: compare only poses under perturbation tolerance
+0b78e85 2026-10-29 Replay: configurable post-warmup state tolerance for perturbed replays
+97aee7c 2026-10-29 record.sbatch: optional EXTRA_HYDRA overrides
+59a71f4 2026-10-29 Add open-loop self-replay control to recorder
+d772fd9 2026-10-29 Fix line continuations in record.sbatch
+a1de157 2026-10-29 Fix record.sbatch overrides
+f423da2 2026-10-29 Add Isaac Gym teacher rollout recorder for SuperDex replay

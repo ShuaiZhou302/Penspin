@@ -1,0 +1,205 @@
+From 8a2c5564c9eeb5d7b631ecbfce305e4f0594ddcf Mon Sep 17 00:00:00 2001
+From: PenSpin dev <dev@localhost>
+Date: Thu, 29 Oct 2026 19:46:28 +0800
+Subject: [PATCH 14/14] Tactile-gap baselines (TACTILE_RAND / TACTILE_CALIB),
+ same patch as tacbase repo
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ penspin/tasks/allegro_hand_hora.py |  61 ++++++++++++++++++++
+ tacbase_patch.py                   |  87 +++++++++++++++++++++++++++++
+ tactile_calib/calib_b100.npz       | Bin 0 -> 636 bytes
+ 3 files changed, 148 insertions(+)
+ create mode 100644 tacbase_patch.py
+ create mode 100644 tactile_calib/calib_b100.npz
+
+diff --git a/penspin/tasks/allegro_hand_hora.py b/penspin/tasks/allegro_hand_hora.py
+index 3573bb4..a69bee8 100644
+--- a/penspin/tasks/allegro_hand_hora.py
++++ b/penspin/tasks/allegro_hand_hora.py
+@@ -414,6 +414,8 @@ class AllegroHandHora(VecTask):
+             student_contacts = sensed_contacts
+             if self._tactile_align() is not None:
+                 student_contacts = self._aligned_contacts(contact_norm)
++            if self._tactile_baseline() is not None:
++                student_contacts = self._baseline_contacts(contact_norm)
+             if self.viewer:
+                 self.debug_contacts = sensed_contacts.detach().cpu().numpy()
+         
+@@ -690,6 +692,65 @@ class AllegroHandHora(VecTask):
+         self.aligned_raw_contacts = pred
+         return torch.where(fa['last'] > 0.1, mask * fa['last'], fa['last'])
+ 
++    def _tactile_baseline(self):
++        """Student tactile baseline channel (TACTILE_RAND=1 or TACTILE_CALIB=<npz>), or None."""
++        if not hasattr(self, '_tbase'):
++            self._tbase = None
++            rand = os.environ.get('TACTILE_RAND') == '1'
++            calib = os.environ.get('TACTILE_CALIB')
++            if rand or calib:
++                assert not (rand and calib) and not os.environ.get('TACTILE_ALIGN_F'), 'tactile channels are exclusive'
++                n, dev = self.num_envs, self.device
++                tb = {'rand': rand, 'hist': torch.zeros((n, 2, 32), device=dev),
++                      'nhist': torch.zeros(n, dtype=torch.long, device=dev), 'last': torch.zeros((n, 32), device=dev)}
++                if calib:
++                    c = np.load(calib)
++                    tb['taus'] = torch.tensor(c['taus'], dtype=torch.float, device=dev)[None].repeat(n, 1)
++                    tb['lag'] = torch.full((n,), int(c['lag']), dtype=torch.long, device=dev)
++                    print('TACTILE_CALIB', calib, 'lag', int(c['lag']), flush=True)
++                else:
++                    tb.update(taus=torch.zeros((n, 32), device=dev), lag=torch.zeros(n, dtype=torch.long, device=dev),
++                              miss=torch.zeros((n, 1), device=dev), spur=torch.zeros((n, 1), device=dev))
++                    self._tbase = tb
++                    self._resample_tactile_rand(torch.ones(n, dtype=torch.bool, device=dev))
++                    print('TACTILE_RAND thr x[0.5,4] miss[0,0.5] spur[0,0.01] lag{0,1,2}', flush=True)
++                self._tbase = tb
++        return self._tbase
++
++    def _resample_tactile_rand(self, envs):
++        tb = self._tbase
++        m = int(envs.sum())
++        if m:
++            u = torch.rand((m, 32), device=self.device)
++            tb['taus'][envs] = 0.05 * torch.exp(np.log(0.5) + u * np.log(8.0))
++            tb['miss'][envs] = 0.5 * torch.rand((m, 1), device=self.device)
++            tb['spur'][envs] = 0.01 * torch.rand((m, 1), device=self.device)
++            tb['lag'][envs] = torch.randint(0, 3, (m,), device=self.device)
++
++    def _baseline_contacts(self, contact_norm):
++        tb = self._tbase
++        at_reset = self.at_reset_buf.bool()  # same reset convention as _aligned_contacts
++        tb['last'][at_reset] = 0.0
++        k = tb['nhist'][:, None]
++        h1 = torch.where(k >= 1, tb['hist'][:, 0], torch.zeros_like(contact_norm))
++        h2 = torch.where(k >= 2, tb['hist'][:, 1], torch.zeros_like(contact_norm))
++        lag = tb['lag'][:, None]
++        norm = torch.where(lag == 0, contact_norm, torch.where(lag == 1, h1, h2))
++        raw = (norm >= tb['taus']).float()
++        if tb['rand']:
++            raw = raw * (torch.rand_like(raw) >= tb['miss']).float()
++            raw = torch.maximum(raw, (torch.rand_like(raw) < tb['spur']).float())
++        tb['hist'] = torch.stack([contact_norm, h1], dim=1)
++        tb['nhist'] = torch.clamp(tb['nhist'] + 1, max=2)
++        tb['nhist'][at_reset] = 0  # the next step is step 0 of the new episode
++        if tb['rand']:
++            self._resample_tactile_rand(at_reset)
++        latency = torch.where(torch.rand_like(raw) < self.latency, 1.0, 0.0)
++        tb['last'] = tb['last'] * latency + raw * (1 - latency)
++        mask = torch.where(torch.rand_like(raw) < self.sensor_noise, 0.0, 1.0)
++        self.baseline_raw_contacts = raw
++        return torch.where(tb['last'] > 0.1, mask * tb['last'], tb['last'])
++
+     def pre_physics_step(self, actions):
+         self.actions = actions.clone().to(self.device)
+         targets = self.prev_targets + self.action_scale * self.actions
+diff --git a/tacbase_patch.py b/tacbase_patch.py
+new file mode 100644
+index 0000000..3734a27
+--- /dev/null
++++ b/tacbase_patch.py
+@@ -0,0 +1,87 @@
++"""Patch the falign student repo (97c4472) with two tactile-gap baselines for the student's tactile channel.
++
++TACTILE_RAND=1: contact randomization. Per env and episode: per-channel threshold 0.05 x log-uniform[0.5, 4], miss
++probability U[0, 0.5], spurious-contact probability U[0, 0.01], delay k uniform in {0, 1, 2} steps. Ranges are fixed a
++priori (no SuperDex data).
++TACTILE_CALIB=<npz with taus[32], lag>: per-channel threshold and delay fit on the SuperDex pairs
++(tools/calib_thresh_delay.py in the superdex port dir).
++Both feed the unchanged latency (0.2) / dropout (0.1) model with its own state; the teacher's privileged tactile stays
++the raw Isaac Gym sensed contact. Unset = original behaviour. Exclusive with TACTILE_ALIGN_F.
++"""
++ENV = 'penspin/tasks/allegro_hand_hora.py'
++s = open(ENV).read()
++rep = [
++("""            if self._tactile_align() is not None:
++                student_contacts = self._aligned_contacts(contact_norm)""",
++"""            if self._tactile_align() is not None:
++                student_contacts = self._aligned_contacts(contact_norm)
++            if self._tactile_baseline() is not None:
++                student_contacts = self._baseline_contacts(contact_norm)"""),
++("""    def pre_physics_step(self, actions):""",
++"""    def _tactile_baseline(self):
++        \"\"\"Student tactile baseline channel (TACTILE_RAND=1 or TACTILE_CALIB=<npz>), or None.\"\"\"
++        if not hasattr(self, '_tbase'):
++            self._tbase = None
++            rand = os.environ.get('TACTILE_RAND') == '1'
++            calib = os.environ.get('TACTILE_CALIB')
++            if rand or calib:
++                assert not (rand and calib) and not os.environ.get('TACTILE_ALIGN_F'), 'tactile channels are exclusive'
++                n, dev = self.num_envs, self.device
++                tb = {'rand': rand, 'hist': torch.zeros((n, 2, 32), device=dev),
++                      'nhist': torch.zeros(n, dtype=torch.long, device=dev), 'last': torch.zeros((n, 32), device=dev)}
++                if calib:
++                    c = np.load(calib)
++                    tb['taus'] = torch.tensor(c['taus'], dtype=torch.float, device=dev)[None].repeat(n, 1)
++                    tb['lag'] = torch.full((n,), int(c['lag']), dtype=torch.long, device=dev)
++                    print('TACTILE_CALIB', calib, 'lag', int(c['lag']), flush=True)
++                else:
++                    tb.update(taus=torch.zeros((n, 32), device=dev), lag=torch.zeros(n, dtype=torch.long, device=dev),
++                              miss=torch.zeros((n, 1), device=dev), spur=torch.zeros((n, 1), device=dev))
++                    self._tbase = tb
++                    self._resample_tactile_rand(torch.ones(n, dtype=torch.bool, device=dev))
++                    print('TACTILE_RAND thr x[0.5,4] miss[0,0.5] spur[0,0.01] lag{0,1,2}', flush=True)
++                self._tbase = tb
++        return self._tbase
++
++    def _resample_tactile_rand(self, envs):
++        tb = self._tbase
++        m = int(envs.sum())
++        if m:
++            u = torch.rand((m, 32), device=self.device)
++            tb['taus'][envs] = 0.05 * torch.exp(np.log(0.5) + u * np.log(8.0))
++            tb['miss'][envs] = 0.5 * torch.rand((m, 1), device=self.device)
++            tb['spur'][envs] = 0.01 * torch.rand((m, 1), device=self.device)
++            tb['lag'][envs] = torch.randint(0, 3, (m,), device=self.device)
++
++    def _baseline_contacts(self, contact_norm):
++        tb = self._tbase
++        at_reset = self.at_reset_buf.bool()  # same reset convention as _aligned_contacts
++        tb['last'][at_reset] = 0.0
++        k = tb['nhist'][:, None]
++        h1 = torch.where(k >= 1, tb['hist'][:, 0], torch.zeros_like(contact_norm))
++        h2 = torch.where(k >= 2, tb['hist'][:, 1], torch.zeros_like(contact_norm))
++        lag = tb['lag'][:, None]
++        norm = torch.where(lag == 0, contact_norm, torch.where(lag == 1, h1, h2))
++        raw = (norm >= tb['taus']).float()
++        if tb['rand']:
++            raw = raw * (torch.rand_like(raw) >= tb['miss']).float()
++            raw = torch.maximum(raw, (torch.rand_like(raw) < tb['spur']).float())
++        tb['hist'] = torch.stack([contact_norm, h1], dim=1)
++        tb['nhist'] = torch.clamp(tb['nhist'] + 1, max=2)
++        tb['nhist'][at_reset] = 0  # the next step is step 0 of the new episode
++        if tb['rand']:
++            self._resample_tactile_rand(at_reset)
++        latency = torch.where(torch.rand_like(raw) < self.latency, 1.0, 0.0)
++        tb['last'] = tb['last'] * latency + raw * (1 - latency)
++        mask = torch.where(torch.rand_like(raw) < self.sensor_noise, 0.0, 1.0)
++        self.baseline_raw_contacts = raw
++        return torch.where(tb['last'] > 0.1, mask * tb['last'], tb['last'])
++
++    def pre_physics_step(self, actions):"""),
++]
++for a, b in rep:
++    assert s.count(a) == 1, a
++    s = s.replace(a, b)
++assert '\nimport numpy as np' in s
++open(ENV, 'w').write(s)
++print('patched', ENV)
+diff --git a/tactile_calib/calib_b100.npz b/tactile_calib/calib_b100.npz
+new file mode 100644
+index 0000000000000000000000000000000000000000..ea459ca078e852b70b820ec56fff61aa5cdf8e90
+GIT binary patch
+literal 636
+zcmWIWW@gc4fB;2?z1vi8{f7b$1`&pm#L{BDyn;$b1_1^JMyN6<J=rhRHz1Ocp^Twg
+zJteg`xk%kgLER?JL|sQgJuSbeq$n{jKEEg>6(sJKm{Xhz6fe$5EJy|NHH?jPG<6he
+z703r%XV3W95{vVNnyspBGi@ynp0}O3e75bb{d!>b<I9`DwEFHgTM%32v8Qd@cV~N$
+zS`ZB~{|d_oFb1hnUH-@hBnC1k043zyw+X1gLXI66ayg0Vuz>4;h8v8=9&ni!L<Jm$
+zp#}_ZE+(jZ0=yZSbeT~j9~{ZR2<CvQ0Z|R$2!|yFbX_2igM0?U>>%Y((7<Q~)CUcQ
+S0B=?{kT??%W&`QpU?Tw|+@q!d
+
+literal 0
+HcmV?d00001
+
+-- 
+2.43.0
+

@@ -1,0 +1,7 @@
+./run_cfg2.sh runs/sm2_lt0.001_n20 isaac/runs/record_evalT_seed42_777022.npz 8 42 0.001 0.99 0.001 0.9999 0.0001 20
+./run_cfg2.sh runs/sm2_lt0.001_n40 isaac/runs/record_evalT_seed42_777022.npz 8 42 0.001 0.99 0.001 0.9999 0.0001 40
+./run_cfg2.sh runs/sm2_lt0.0005_n20 isaac/runs/record_evalT_seed42_777022.npz 8 42 0.001 0.99 0.0005 0.9999 0.0001 20
+./run_cfg2.sh runs/sm2_lt0.0005_n40 isaac/runs/record_evalT_seed42_777022.npz 8 42 0.001 0.99 0.0005 0.9999 0.0001 40
+./run_cfg2.sh runs/sm2_lt0.00025_n20 isaac/runs/record_evalT_seed42_777022.npz 8 42 0.001 0.99 0.00025 0.9999 0.0001 20
+./run_cfg2.sh runs/sm2_lt0.00025_n40 isaac/runs/record_evalT_seed42_777022.npz 8 42 0.001 0.99 0.00025 0.9999 0.0001 40
+./run_cfg2.sh runs/sm2_c0.0005_lt0.00025_n40 isaac/runs/record_evalT_seed42_777022.npz 8 42 0.0005 0.99 0.00025 0.9999 0.0001 40

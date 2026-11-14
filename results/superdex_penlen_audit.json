@@ -1,0 +1,36 @@
+{
+  "dir": "<PROJECT_ROOT>/penspin-superdex-penlen-20261031",
+  "code_sha256": {"tools/sdx_env.py": "14365312ca85d5b0", "tools/closed_loop.py": "15866415230ced0e", "tools/diag_pose.py": "65c0ae3b1c29bfe5"},
+  "findings": {
+    "pen_geometry": "Isaac Gym uses four pen assets per env, length 0.40/0.44/0.48/0.52 x scale. SuperDex used 0.40 x scale for all (mean 86% of IG length, min 77%; about 3/4 of episodes affected).",
+    "termination": "IG end-point termination uses one scalar for all envs: 0.52 x last env scale (about 0.15 m). SuperDex used 0.40 x own scale (about 0.116 m), so it terminated later than IG.",
+    "fix": "penlen=ig: per-env mesh length from the record point cloud, inertia recomputed from that mesh, termination with the IG scalar."
+  },
+  "sdx_mu1_fixed_vs_old": {
+    "columns": ["fixed_rot_mean", "fixed_rot_std", "fixed_duration_s", "old_rot_mean", "old_rot_std", "old_duration_s"],
+    "teacher": [49.2, 3.7, 6.10, 37.5, 1.6, 4.79],
+    "proprio": [11.7, 0.9, 2.08, 12.8, 0.8, 2.19],
+    "btactile": [17.8, 2.1, 2.74, 16.4, 1.1, 2.54],
+    "trand": [17.9, 1.7, 2.76, 15.8, 1.2, 2.50],
+    "tcalib": [17.4, 1.9, 2.69, 16.0, 0.7, 2.49],
+    "falign": [14.5, 1.4, 2.43, 14.7, 1.8, 2.44]
+  },
+  "labels": {
+    "note": "Micro F1 excluding pen channel, against SDX resync labels re-collected with the correct pen length. f and calib are still the models fit on the wrong-length pairs. Control: on 0.40 pens old and new labels are identical (F1 1.0).",
+    "columns": ["identity_F1", "calib_F1", "f_F1", "sdx_on_rate", "ig_on_rate", "f_on_rate"],
+    "val_teacher": [0.636, 0.680, 0.790, 0.047, 0.079, 0.043],
+    "shift_btactile": [0.646, 0.669, 0.765, 0.050, 0.081, 0.047],
+    "own_f_student_rollouts": [0.625, 0.632, 0.722, 0.048, 0.081, 0.046],
+    "val_f_F1_on_old_labels": 0.826,
+    "val_f_F1_by_length_new_labels": {"0.40": 0.827, "0.44": 0.797, "0.48": 0.774, "0.52": 0.738},
+    "val_old_vs_new_label_F1_by_length": {"0.40": 1.0, "0.44": 0.845, "0.48": 0.834, "0.52": 0.780}
+  },
+  "pen_end_estimate_error_cm_clean_pose": {
+    "note": "Mean per-coordinate L1 against the clean pose, 3 eval seeds. DAgger pose_l1 of about 2.1 cm includes a uniform +-4 cm box noise on the target. SDX at mu=1 with the pen fix.",
+    "falign": {"ig": [0.85, 0.75, 0.77], "sdx": [0.84, 0.79, 0.80]},
+    "btactile": {"ig": [0.51, 0.51, 0.54], "sdx": [0.82, 0.78, 0.81]},
+    "trand": {"sdx": [0.81, 0.86, 0.86]},
+    "tcalib": {"sdx": [0.80, 0.86, 0.81]}
+  },
+  "integration_check": "On records evalFA, tactile seen by the f student matches offline f output: P(seen|pred)=0.876, consistent with latency 0.2 and dropout 0.1."
+}

@@ -1,0 +1,134 @@
+{
+ "note": "Contact F1 (micro, excl. pen-total channel) of f v4 (f_b100_s0), calib v4 and identity on SDX resync pairs (mu=1, penlen=ig) of each student's own IG rollouts. f student: records 783809 eval seeds 42-44; calib student: 783810 seeds 42-44; B+tactile: held-out pairBT seed 103 (777113), because its eval records 777024 lack per-step qd. Rule fixed beforehand in courseproject/DECOMPOSITION_DESIGN_20261105.md section 6: Fo - Ff >= 0.05 f error likely, <= 0.03 dynamics more likely, else inconclusive.",
+ "f_student": {
+  "rows": 12784,
+  "on_sdx": 0.0512,
+  "per_seed": {
+   "evalFB_seed42_783809": {
+    "identity": 0.6428,
+    "calib": 0.658,
+    "f": 0.7201,
+    "rows": 4730,
+    "pen_err_med_cm": 0.192
+   },
+   "evalFB_seed43_783809": {
+    "identity": 0.6447,
+    "calib": 0.667,
+    "f": 0.7211,
+    "rows": 4087,
+    "pen_err_med_cm": 0.195
+   },
+   "evalFB_seed44_783809": {
+    "identity": 0.6276,
+    "calib": 0.6512,
+    "f": 0.7216,
+    "rows": 3967,
+    "pen_err_med_cm": 0.2
+   }
+  },
+  "identity": {
+   "F1": 0.6388,
+   "prec": 0.5141,
+   "rec": 0.8434,
+   "on": 0.0841,
+   "F1_seed_sd": 0.0094
+  },
+  "calib": {
+   "F1": 0.6588,
+   "prec": 0.567,
+   "rec": 0.786,
+   "on": 0.071,
+   "F1_seed_sd": 0.0079
+  },
+  "f": {
+   "F1": 0.7209,
+   "prec": 0.7621,
+   "rec": 0.6839,
+   "on": 0.046,
+   "F1_seed_sd": 0.0008
+  }
+ },
+ "btactile": {
+  "rows": 6598,
+  "on_sdx": 0.0504,
+  "per_seed": {
+   "pairBT_seed103_777113": {
+    "identity": 0.646,
+    "calib": 0.6849,
+    "f": 0.7745,
+    "rows": 6598,
+    "pen_err_med_cm": 0.194
+   }
+  },
+  "identity": {
+   "F1": 0.646,
+   "prec": 0.5249,
+   "rec": 0.8396,
+   "on": 0.0806,
+   "F1_seed_sd": null
+  },
+  "calib": {
+   "F1": 0.6849,
+   "prec": 0.5966,
+   "rec": 0.8039,
+   "on": 0.0679,
+   "F1_seed_sd": null
+  },
+  "f": {
+   "F1": 0.7745,
+   "prec": 0.7816,
+   "rec": 0.7676,
+   "on": 0.0495,
+   "F1_seed_sd": null
+  }
+ },
+ "calib_student": {
+  "rows": 14732,
+  "on_sdx": 0.0524,
+  "per_seed": {
+   "evalTD_seed42_783810": {
+    "identity": 0.6584,
+    "calib": 0.6887,
+    "f": 0.7535,
+    "rows": 5131,
+    "pen_err_med_cm": 0.193
+   },
+   "evalTD_seed43_783810": {
+    "identity": 0.677,
+    "calib": 0.7046,
+    "f": 0.7675,
+    "rows": 4952,
+    "pen_err_med_cm": 0.192
+   },
+   "evalTD_seed44_783810": {
+    "identity": 0.6051,
+    "calib": 0.6369,
+    "f": 0.7217,
+    "rows": 4649,
+    "pen_err_med_cm": 0.196
+   }
+  },
+  "identity": {
+   "F1": 0.6489,
+   "prec": 0.5281,
+   "rec": 0.8413,
+   "on": 0.0835,
+   "F1_seed_sd": 0.0373
+  },
+  "calib": {
+   "F1": 0.679,
+   "prec": 0.5898,
+   "rec": 0.7999,
+   "on": 0.0711,
+   "F1_seed_sd": 0.0354
+  },
+  "f": {
+   "F1": 0.7494,
+   "prec": 0.777,
+   "rec": 0.7236,
+   "on": 0.0488,
+   "F1_seed_sd": 0.0235
+  }
+ },
+ "gap_Fo_minus_Ff": 0.0285
+}
